@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="vi" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Luyện Phản Xạ Chat Tiếng Anh Bằng Giọng Nói</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f7ff 0%, #e6eeff 50%, #f3e8ff 100%);
+            min-height: 100vh;+
+            color: #1e293b;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Hiệu ứng sóng âm khi Micro đang tự động lắng nghe */
+        @keyframes micWave {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .mic-listening {
+            animation: micWave 1.4s infinite;
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+            color: #ffffff !important;
+        }
+
+        /* Hiệu ứng sóng âm khi Máy đang nói */
+        @keyframes aiSpeak {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        .ai-speaking {
+            animation: aiSpeak 0.9s infinite ease-in-out;
+            border-color: #2563eb !important;
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.25);
+        }
+
+        /* Hiệu ứng bật nảy thông báo CORRECT / INCORRECT */
+        @keyframes bannerPop {
+            0% { transform: scale(0.65); opacity: 0; }
+            70% { transform: scale(1.06); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .banner-pop {
+            animation: bannerPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        /* Thanh cuộn mượt cho khung lịch sử hội thoại */
+        .chat-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="pb-12">
+
+    <!-- HEADER CỐ ĐỊNH PHÍA TRÊN -->
+    <header class="bg-white/95 backdrop-blur-md sticky top-0 z-40 border-b border-indigo-100 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <!-- Thương hiệu -->
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl shadow-md">
+                        <i class="fa-solid fa-headset"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-xl font-extrabold text-slate-800 tracking-tight leading-tight">
+                            AI VOICE <span class="text-blue-600">ENGLISH CHAT</span>
+                        </h1>
+                        <p class="text-xs text-slate-500 font-medium">Luyện Phản Xạ Giao Tiếp Bằng Giọng Nói</p>
+                    </div>
+                </div>
+
+                <!-- Điểm trên Mobile -->
+                <div class="lg:hidden flex items-center gap-1.5 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+                    <i class="fa-solid fa-star text-amber-500 text-xs"></i>
+                    <span class="text-xs font-bold text-amber-800" id="mobile-score">0 điểm</span>
+                </div>
+            </div>
+
+            <!-- Thanh chuyển đổi 3 khu vực chính -->
+            <nav class="flex bg-slate-100 p-1 rounded-xl w-full lg:w-auto overflow-x-auto">
+                <button onclick="switchMainView('mode2')" id="nav-mode2" class="flex-1 lg:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-600 shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-bolt"></i> 2. Máy Hỏi - Phản Xạ
+                </button>
+                <button onclick="switchMainView('mode1')" id="nav-mode1" class="flex-1 lg:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-comments"></i> 1. Người Hỏi - Máy Đáp
+                </button>
+                <button onclick="switchMainView('bank')" id="nav-bank" class="flex-1 lg:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-book-open"></i> Kho Câu Đời Tư
+                </button>
+            </nav>
+
+            <!-- Điểm trên Desktop -->
+            <div class="hidden lg:flex items-center gap-2 bg-amber-50 border border-amber-200 px-4 py-2 rounded-full shadow-inner">
+                <i class="fa-solid fa-trophy text-amber-500"></i>
+                <span class="text-sm font-bold text-amber-800" id="desktop-score">0 điểm</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- NỘI DUNG CHÍNH -->
+    <main class="max-w-5xl mx-auto px-4 pt-5 space-y-5">
+
+        <!-- THANH CẤU HÌNH GIỌNG ĐỌC & ÂM THANH -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-indigo-100 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+            <!-- Chọn giọng đọc -->
+            <div class="lg:col-span-5 flex flex-col sm:flex-row sm:items-center gap-2">
+                <label for="voice-select" class="text-xs font-extrabold uppercase tracking-wider text-blue-700 flex items-center gap-1.5 shrink-0">
+                    <i class="fa-solid fa-earth-americas text-base"></i> Giọng Máy:
+                </label>
+                <select id="voice-select" class="w-full bg-blue-50/60 border border-blue-200 text-slate-800 text-sm rounded-xl px-3 py-2 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="default">Đang nạp giọng tiếng Anh...</option>
+                </select>
+            </div>
+
+            <!-- Thanh trượt tốc độ nói -->
+            <div class="lg:col-span-4 flex items-center gap-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl px-3 py-2">
+                <span class="text-xs font-extrabold text-emerald-800 whitespace-nowrap">
+                    <i class="fa-solid fa-gauge-high text-emerald-600"></i> Tốc độ:
+                </span>
+                <input type="range" id="rate-slider" min="0.6" max="1.4" step="0.05" value="0.95"
+                       oninput="updateRateLabel(this.value)"
+                       class="w-full accent-emerald-600 cursor-pointer h-2 bg-emerald-200 rounded-lg">
+                <span id="rate-badge" class="bg-emerald-600 text-white text-xs font-extrabold px-2 py-0.5 rounded-lg min-w-[46px] text-center">
+                    0.95x
+                </span>
+            </div>
+
+            <!-- Nút thử tiếng Chuông / Còi -->
+            <div class="lg:col-span-3 flex items-center justify-end gap-2">
+                <button onclick="playBellCorrect()" class="flex-1 py-2 px-2.5 bg-emerald-100 hover:bg-emerald-200 text-emerald-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1" title="Nghe thử tiếng chuông báo đúng">
+                    <i class="fa-solid fa-bell"></i> Chuông Đúng
+                </button>
+                <button onclick="playBuzzerIncorrect()" class="flex-1 py-2 px-2.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1" title="Nghe thử tiếng è báo sai">
+                    <i class="fa-solid fa-volume-xmark"></i> Tiếng "È"
+                </button>
+            </div>
+        </div>
+
+        <!-- THANH CHỌN CHỦ ĐỀ & CẢNH BÁO TRÌNH DUYỆT -->
+        <div class="bg-white rounded-2xl p-4 shadow-sm border border-indigo-50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <span class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-user-tag"></i>
+                </span>
+                <div>
+                    <span class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-600 block">Chủ đề đang luyện tập</span>
+                    <select id="topic-selector" onchange="onTopicChange(this.value)" class="text-sm sm:text-base font-extrabold text-slate-800 bg-transparent focus:outline-none cursor-pointer max-w-[260px] sm:max-w-md truncate">
+    <option value="personal_life">a. ĐỜI TƯ & TRẢI NGHIỆM VIỆT NAM (27 Tình huống)</option>
+    <option value="q_c">c. DU LỊCH VÀ KHÁCH SẠN (6 Tình huống)</option>
+    <option value="q_d">d. MUA SẮM VÀ ĂN UỐNG (6 Tình huống)</option>
+    <option value="q_e">e. CÔNG SỞ VÀ ĐỜI SỐNG (6 Tình huống)</option>
+    <option value="q_f">f. TẠI NHÀ HÀNG (2 Tình huống)</option>
+    <option value="q_g">g. TẠI KHÁCH SẠN (2 Tình huống)</option>
+    <option value="q_h">h. KHÁM BỆNH (8 Tình huống)</option>
+    <option value="q_i">i. ĐI TAXI (3 Tình huống)</option>
+    <option value="q_k">k. Ở TIỆM THUỐC TÂY (3 Tình huống)</option>
+    <option value="q_l">l. Ở TIỆM HỚT TÓC (3 Tình huống)</option>
+    <option value="q_m">m. Ở HẢI QUAN (3 Tình huống)</option>
+    <option value="q_n">n. THỨC ĂN NHANH (3 Tình huống)</option>
+    <option value="q_o">o. QUÁN CÀ PHÊ (3 Tình huống)</option>
+    <option value="q_p">p. RẠP CHIẾU PHIM (3 Tình huống)</option>
+    <option value="q_q">q. PHÒNG TRIỂN LÃM (3 Tình huống)</option>
+    <option value="q_r">r. Ở TIỆM ĐỒ CỔ (3 Tình huống)</option>
+    <option value="q_s">s. HOẠT ĐỘNG TỪ THIỆN (3 Tình huống)</option>
+    <option value="q_t">t. BUỔI DẠY TIẾNG ANH (6 Tình huống)</option>
+    <option value="q_u">u. ĐI CHỢ MUA HẢI SẢN & RAU CỦ (6 Tình huống)</option>
+    <option value="q_v">v. THĂM BỆNH Ở BỆNH VIỆN (6 Tình huống)</option>
+    <option value="q_w">w. HỎI ĐƯỜNG BẰNG GOOGLE MAPS (6 Tình huống)</option>
+    <option value="q_x">x. ĐI NGÂN HÀNG & ĐỔI NGOẠI TỆ (6 Tình huống)</option>
+    <option value="q_y">y. THUÊ XE & GẶP SỰ CỐ GIAO THÔNG (6 Tình huống)</option>
+    <option value="q_z">z. ĐẶT VÉ MÁY BAY & THỦ TỤC BAY (6 Tình huống)</option>
+    <option value="q_aa">aa. PHỎNG VẤN XIN VIỆC (6 Tình huống)</option>
+    <option value="q_bb">bb. GIAO TIẾP QUA ĐIỆN THOẠI (5 Tình huống)</option>
+}
+</select>
+
+                </div>
+            </div>
+
+            <div id="browser-support-badge" class="text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1.5">
+                <i class="fa-solid fa-microphone"></i> Sẵn sàng nhận diện giọng nói tiếng Anh
+            </div>
+        </div>
+
+        <!-- =====================================================================
+             CHẾ ĐỘ 2 (MẶC ĐỊNH): MÁY HỎI - NGƯỜI TRẢ LỜI PHẢN XẠ (RẢNH TAY 100%)
+             ===================================================================== -->
+        <section id="view-mode2" class="space-y-5">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-lg border border-indigo-100">
+                <!-- Tiêu đề & Nút Bắt đầu / Dừng phiên rảnh tay -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-purple-600 bg-purple-50 px-3 py-1 rounded-full">
+                            Chế Độ 2 • Rảnh Tay Không Cần Bấm Nút Từng Câu
+                        </span>
+                        <h2 class="text-xl font-extrabold text-slate-800 mt-2">Máy Hỏi Ngẫu Nhiên — Bạn Trả Lời Phản Xạ</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Máy đọc câu hỏi xong sẽ <b>tự động bật Micro</b> để nghe bạn trả lời, chấm điểm và tự chuyển câu tiếp theo.</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button id="btn-start-reflex" onclick="startReflexSession()" class="px-5 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-extrabold rounded-2xl shadow-md transition flex items-center gap-2">
+                            <i class="fa-solid fa-play"></i> Bắt Đầu Phản Xạ
+                        </button>
+                        <button id="btn-stop-reflex" onclick="stopAllSessions()" class="hidden px-5 py-3.5 bg-slate-700 hover:bg-slate-800 text-white font-extrabold rounded-2xl shadow-md transition flex items-center gap-2">
+                            <i class="fa-solid fa-stop"></i> Dừng Lại
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Khu vực hiển thị câu hỏi của Máy -->
+                <div class="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                    <!-- Avatar Máy & Trạng thái -->
+                    <div class="lg:col-span-4 flex flex-col items-center text-center p-5 rounded-2xl bg-slate-50 border border-slate-200/80" id="ai-box-mode2">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center text-3xl shadow-lg mb-3">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <span id="reflex-status-pill" class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-200 text-slate-700">
+                            Đang chờ bấm Bắt Đầu
+                        </span>
+                        <div class="mt-4 flex items-center gap-2">
+                            <button onclick="repeatCurrentReflexQuestion()" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-blue-50 text-blue-700 rounded-xl text-xs font-bold shadow-sm transition">
+                                <i class="fa-solid fa-volume-high mr-1"></i> Nghe lại câu hỏi
+                            </button>
+                            <button onclick="skipToNextReflexQuestion()" class="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold shadow-sm transition">
+                                <i class="fa-solid fa-forward-step mr-1"></i> Câu khác
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Nội dung Câu hỏi & Gợi ý trả lời -->
+                    <div class="lg:col-span-8 space-y-4">
+                        <div class="bg-blue-50/70 border border-blue-200 rounded-2xl p-5">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <span id="reflex-category-tag" class="text-[11px] font-extrabold uppercase tracking-wider text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-md">
+                                    Chủ đề: Đời tư
+                                </span>
+                                <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 cursor-pointer">
+                                    <input type="checkbox" id="toggle-hint-checkbox" checked onchange="toggleReflexHintVisibility()" class="rounded text-blue-600">
+                                    Hiện gợi ý câu trả lời
+                                </label>
+                            </div>
+
+                            <p id="reflex-question-en" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
+                                Bấm "Bắt Đầu Phản Xạ" để Máy đặt câu hỏi đầu tiên!
+                            </p>
+                            <p id="reflex-question-vi" class="text-sm font-semibold text-slate-600 mt-1">
+                                Máy sẽ tự động bật micro ngay sau khi đọc xong câu hỏi.
+                            </p>
+                        </div>
+
+                        <!-- Khung Gợi ý mẫu câu trả lời -->
+                        <div id="reflex-hint-box" class="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4">
+                            <p class="text-xs font-extrabold uppercase tracking-wider text-amber-800 mb-1">
+                                <i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Gợi ý mẫu trả lời tiếng Anh:
+                            </p>
+                            <p id="reflex-sample-en" class="text-sm sm:text-base font-bold text-slate-800">
+                                "My name is..." / "I am ... years old."
+                            </p>
+                            <p id="reflex-sample-vi" class="text-xs text-slate-500 mt-0.5">
+                                (Bạn có thể trả lời tự do theo thông tin thật của bản thân bằng tiếng Anh)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KHUNG KẾT QUẢ PHẢN XẠ: HIỆN CHỮ CORRECT (XANH LÁ) HOẶC INCORRECT (ĐỎ) -->
+                <div id="reflex-feedback-banner" class="hidden mt-6 rounded-3xl p-6 text-center border-2 shadow-md">
+                    <div id="reflex-verdict-title" class="text-3xl sm:text-4xl font-black tracking-wide mb-2">
+                        CORRECT!
+                    </div>
+                    <p id="reflex-heard-transcript" class="text-sm sm:text-base font-bold mb-1">
+                        Bạn đã nói: "..."
+                    </p>
+                    <p id="reflex-feedback-detail" class="text-xs sm:text-sm font-medium opacity-90"></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             CHẾ ĐỘ 1: NGƯỜI HỎI - MÁY TRẢ LỜI (TỰ ĐỘNG NGHE & ĐÁP)
+             ===================================================================== -->
+        <section id="view-mode1" class="hidden space-y-5">
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-lg border border-indigo-100">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                    <div>
+                        <span class="text-xs font-extrabold uppercase tracking-wider text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full">
+                            Chế Độ 1 • Giao Tiếp Chủ Động
+                        </span>
+                        <h2 class="text-xl font-extrabold text-slate-800 mt-2">Bạn Hỏi Tiếng Anh — Máy Trả Lời Tự Nhiên</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Bạn có thể đọc câu gợi ý ngẫu nhiên hoặc tự đặt câu hỏi bất kỳ về Đời tư cho Máy.</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button id="btn-start-ask" onclick="startUserAskSession()" class="px-5 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-extrabold rounded-2xl shadow-md transition flex items-center gap-2">
+                            <i class="fa-solid fa-microphone"></i> Bật Micro Hỏi Máy
+                        </button>
+                        <button id="btn-stop-ask" onclick="stopAllSessions()" class="hidden px-5 py-3.5 bg-slate-700 hover:bg-slate-800 text-white font-extrabold rounded-2xl shadow-md transition flex items-center gap-2">
+                            <i class="fa-solid fa-stop"></i> Dừng Micro
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Gợi ý câu hỏi ngẫu nhiên cho Người dùng -->
+                <div class="mt-5 bg-indigo-50/70 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-indigo-700 block mb-1">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Gợi ý câu hỏi ngẫu nhiên bạn có thể hỏi Máy:
+                        </span>
+                        <p id="mode1-prompt-en" class="text-base sm:text-lg font-extrabold text-slate-900">
+                            "What is your name and how old are you?"
+                        </p>
+                        <p id="mode1-prompt-vi" class="text-xs font-medium text-slate-600">
+                            (Tên bạn là gì và bạn bao nhiêu tuổi?)
+                        </p>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button onclick="speakMode1Prompt()" class="px-3.5 py-2 bg-white border border-indigo-200 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition">
+                            <i class="fa-solid fa-volume-high mr-1"></i> Nghe mẫu
+                        </button>
+                        <button onclick="pickRandomMode1Prompt()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition">
+                            <i class="fa-solid fa-shuffle mr-1"></i> Đổi câu hỏi
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Khung lịch sử hội thoại Chat -->
+                <div id="mode1-chat-history" class="mt-5 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 h-80 overflow-y-auto chat-scroll space-y-3">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs shrink-0 mt-1">
+                            <i class="fa-solid fa-robot"></i>
+                        </div>
+                        <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm max-w-[85%]">
+                            <p class="text-sm font-bold text-slate-800">Hello! Ask me anything about my personal life, family, job, or hobbies!</p>
+                            <p class="text-xs text-slate-500 mt-0.5">Xin chào! Hãy bấm "Bật Micro Hỏi Máy" và hỏi tôi bất cứ điều gì về đời tư, gia đình, nghề nghiệp hay sở thích nhé!</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trạng thái Micro Chế độ 1 -->
+                <div class="mt-4 flex items-center justify-between text-xs font-semibold text-slate-500">
+                    <span id="mode1-mic-status"><i class="fa-solid fa-circle text-slate-300 mr-1.5"></i> Micro đang tắt</span>
+                    <button onclick="clearMode1Chat()" class="text-slate-400 hover:text-rose-600 transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Xóa lịch sử chat
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             KHO CÂU MẪU SOẠN SẴN CHỦ ĐỀ ĐỜI TƯ (ĐỂ ÔN TẬP & NGHE TRƯỚC)
+             ===================================================================== -->
+        <section id="view-bank" class="hidden space-y-4">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-indigo-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-extrabold text-slate-800">Bộ Câu Hỏi & Trả Lời Mẫu Chủ Đề: ĐỜI TƯ</h2>
+                    <p class="text-xs text-slate-500">Bao gồm đầy đủ: Tên, tuổi, nghề nghiệp, quê quán, nơi sống, hôn nhân, con cái, sống cùng ai, anh chị em, sở thích.</p>
+                </div>
+                <span id="bank-count-badge" class="text-xs font-extrabold bg-blue-100 text-blue-700 px-3 py-1.5 rounded-full self-start sm:self-center">
+                    18 mẫu hội thoại
+                </span>
+            </div>
+
+            <div id="bank-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+
+    </main>
+
+    <script>
+        // =========================================================================
+        // 1. KHO DỮ LIỆU CHỦ ĐỀ ĐỜI TƯ (SOẠN SẴN ĐẦY ĐỦ TẤT CẢ CÁC Ý BẠN YÊU CẦU)
+        // =========================================================================
+        const CONVERSATION_TOPICS = {
+            personal_life: {
+                id: "personal_life",
+                title: "Đời tư (Personal Life)",
+                items: [
+                    // 1. Tên (Name)
+                    {
+                        id: 1,
+                        subTopic: "Tên (Name)",
+                        qEn: "What is your full name?",
+                        qVi: "Tên đầy đủ của bạn là gì?",
+                        aEn: "My full name is Alex Nguyen, or you can just call me Alex.",
+                        aVi: "Tên đầy đủ của tôi là Alex Nguyễn, hoặc bạn cứ gọi tôi là Alex.",
+                        keywordsAsk: ["name", "who are you", "call you"],
+                        keywordsAns: ["my name", "i am", "i'm", "call me"]
+                    },
+                    // 2. Tuổi (Age)
+                    {
+                        id: 2,
+                        subTopic: "Tuổi tác (Age)",
+                        qEn: "How old are you?",
+                        qVi: "Bạn bao nhiêu tuổi rồi?",
+                        aEn: "I am thirty-two years old.",
+                        aVi: "Tôi năm nay ba mươi hai tuổi.",
+                        keywordsAsk: ["old", "age"],
+                        keywordsAns: ["years old", "i am", "i'm", "twenty", "thirty", "forty", "fifty", "sixty", "teen", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+                    },
+                    // 3. Nghề nghiệp (Occupation)
+                    {
+                        id: 3,
+                        subTopic: "Nghề nghiệp (Job)",
+                        qEn: "What do you do for a living?",
+                        qVi: "Bạn làm nghề gì để kiếm sống?",
+                        aEn: "I work as a high school English teacher.",
+                        aVi: "Tôi làm giáo viên dạy tiếng Anh ở trường trung học phổ thông.",
+                        keywordsAsk: ["do you do", "job", "occupation", "work", "living"],
+                        keywordsAns: ["i am a", "i am an", "i'm a", "i'm an", "work as", "work in", "work for", "teacher", "engineer", "doctor", "student", "nurse", "worker", "business", "farmer", "driver", "retired", "manager", "staff"]
+                    },
+                    {
+                        id: 4,
+                        subTopic: "Nơi làm việc (Workplace)",
+                        qEn: "Where do you work and do you enjoy your job?",
+                        qVi: "Bạn làm việc ở đâu và bạn có thích công việc của mình không?",
+                        aEn: "I work at a local company downtown, and I really enjoy my job.",
+                        aVi: "Tôi làm việc tại một công ty ở trung tâm thành phố và tôi rất thích công việc này.",
+                        keywordsAsk: ["where do you work", "enjoy your job", "like your job"],
+                        keywordsAns: ["i work", "company", "school", "hospital", "office", "home", "yes", "love", "enjoy", "like"]
+                    },
+                    // 4. Từ đâu đến / Quê quán (Origin / Hometown)
+                    {
+                        id: 5,
+                        subTopic: "Quê quán (Origin)",
+                        qEn: "Where are you originally from?",
+                        qVi: "Quê gốc của bạn ở đâu / Bạn từ đâu đến?",
+                        aEn: "I am originally from Dak Lak, a beautiful province in the Central Highlands of Vietnam.",
+                        aVi: "Quê gốc của tôi ở Đắk Lắk, một tỉnh xinh đẹp ở vùng Tây Nguyên Việt Nam.",
+                        keywordsAsk: ["from", "hometown", "born", "come from"],
+                        keywordsAns: ["i am from", "i'm from", "from", "hometown", "vietnam", "province", "city"]
+                    },
+                    // 5. Nơi sống hiện tại (Current Residence)
+                    {
+                        id: 6,
+                        subTopic: "Nơi sống hiện tại (Current Residence)",
+                        qEn: "Where do you live now?",
+                        qVi: "Hiện tại bạn đang sinh sống ở đâu?",
+                        aEn: "I currently live in a peaceful neighborhood in Ho Chi Minh City.",
+                        aVi: "Hiện tại tôi đang sống ở một khu dân cư yên tĩnh tại Thành phố Hồ Chí Minh.",
+                        keywordsAsk: ["live now", "where do you live", "address", "staying"],
+                        keywordsAns: ["i live", "living", "in", "city", "town", "village", "district", "street", "apartment", "house"]
+                    },
+                    // 6. Lập gia đình hay chưa (Marital Status)
+                    {
+                        id: 7,
+                        subTopic: "Tình trạng hôn nhân (Marital Status)",
+                        qEn: "Are you married or still single?",
+                        qVi: "Bạn đã lập gia đình hay vẫn còn độc thân?",
+                        aEn: "I am happily married. My spouse and I got married six years ago.",
+                        aVi: "Tôi đã lập gia đình và rất hạnh phúc. Vợ chồng tôi cưới nhau được sáu năm rồi.",
+                        keywordsAsk: ["married", "single", "marital", "wife", "husband", "spouse"],
+                        keywordsAns: ["married", "single", "have a wife", "have a husband", "not yet", "divorced", "yes", "no"]
+                    },
+                    // 7. Có con chưa? Bao nhiêu tuổi? Làm nghề gì? (Children, Ages & Jobs)
+                    {
+                        id: 8,
+                        subTopic: "Con cái (Children)",
+                        qEn: "Do you have any children?",
+                        qVi: "Bạn đã có con chưa?",
+                        aEn: "Yes, I have two wonderful children, a son and a daughter.",
+                        aVi: "Vâng, tôi có hai người con tuyệt vời, một trai và một gái.",
+                        keywordsAsk: ["have any children", "have kids", "any kids", "children"],
+                        keywordsAns: ["yes", "no", "i have", "son", "daughter", "children", "kids", "don't have"]
+                    },
+                    {
+                        id: 9,
+                        subTopic: "Tuổi & Nghề của con (Children's Ages & Jobs)",
+                        qEn: "How old are your children and what do they do?",
+                        qVi: "Các con của bạn bao nhiêu tuổi và chúng đang làm gì?",
+                        aEn: "My son is twenty-four and works as an IT engineer, and my daughter is nineteen and is a university student.",
+                        aVi: "Con trai tôi 24 tuổi và làm kỹ sư công nghệ thông tin, còn con gái tôi 19 tuổi đang là sinh viên đại học.",
+                        keywordsAsk: ["old are your children", "children do", "kids do", "son", "daughter"],
+                        keywordsAns: ["son", "daughter", "years old", "student", "school", "university", "works", "engineer", "doctor", "teacher", "child", "don't have"]
+                    },
+                    // 8. Đang sống với ai (Who do you live with)
+                    {
+                        id: 10,
+                        subTopic: "Đang sống cùng ai (Living Companions)",
+                        qEn: "Who are you living with right now?",
+                        qVi: "Hiện tại bạn đang sống chung với ai?",
+                        aEn: "I live with my parents, my wife, and our two kids in a big house.",
+                        aVi: "Tôi đang sống cùng bố mẹ, vợ tôi và hai con nhỏ trong một ngôi nhà lớn.",
+                        keywordsAsk: ["who do you live", "living with", "live alone"],
+                        keywordsAns: ["i live with", "live alone", "parents", "family", "wife", "husband", "children", "kids", "friends", "mother", "father"]
+                    },
+                    // 9. Có anh chị em không? Số lượng? Làm nghề gì? (Siblings, Count & Jobs)
+                    {
+                        id: 11,
+                        subTopic: "Anh chị em & Số lượng (Siblings)",
+                        qEn: "Do you have any brothers or sisters? How many?",
+                        qVi: "Bạn có anh chị em ruột không? Có bao nhiêu người?",
+                        aEn: "Yes, I come from a big family. I have one older brother and two younger sisters.",
+                        aVi: "Có, tôi sinh ra trong một gia đình đông con. Tôi có một anh trai và hai em gái.",
+                        keywordsAsk: ["brothers or sisters", "siblings", "how many"],
+                        keywordsAns: ["yes", "no", "brother", "sister", "only child", "one", "two", "three", "i have"]
+                    },
+                    {
+                        id: 12,
+                        subTopic: "Nghề nghiệp của anh chị em (Siblings' Jobs)",
+                        qEn: "What do your brothers and sisters do for a living?",
+                        qVi: "Anh chị em của bạn đang làm nghề gì?",
+                        aEn: "My older brother is a doctor at a city hospital, and my younger sister is an accountant.",
+                        aVi: "Anh trai tôi là bác sĩ tại một bệnh viện thành phố, còn em gái tôi là kế toán.",
+                        keywordsAsk: ["brothers and sisters do", "brother do", "sister do", "siblings do"],
+                        keywordsAns: ["brother", "sister", "is a", "works as", "teacher", "doctor", "nurse", "engineer", "student", "business", "worker", "only child"]
+                    },
+                    // 10. Sở thích (Hobbies)
+                    {
+                        id: 13,
+                        subTopic: "Sở thích lúc rảnh (Hobbies)",
+                        qEn: "What are your hobbies in your free time?",
+                        qVi: "Sở thích của bạn vào thời gian rảnh rỗi là gì?",
+                        aEn: "In my free time, I love reading books, listening to music, and playing badminton.",
+                        aVi: "Vào thời gian rảnh, tôi thích đọc sách, nghe nhạc và chơi cầu lông.",
+                        keywordsAsk: ["hobbies", "free time", "spare time", "like doing"],
+                        keywordsAns: ["i like", "i love", "my hobby", "hobbies", "reading", "music", "watching", "playing", "traveling", "cooking", "sports", "football", "badminton", "swimming"]
+                    },
+                    {
+                        id: 14,
+                        subTopic: "Thể thao & Giải trí (Sports & Leisure)",
+                        qEn: "Do you like playing sports or traveling?",
+                        qVi: "Bạn có thích chơi thể thao hay đi du lịch không?",
+                        aEn: "Yes, I really enjoy traveling to new places and jogging every morning to stay healthy.",
+                        aVi: "Có, tôi rất thích đi du lịch đến những vùng đất mới và chạy bộ mỗi sáng để giữ sức khỏe.",
+                        keywordsAsk: ["sports", "traveling", "travel", "exercise"],
+                        keywordsAns: ["yes", "i like", "i love", "enjoy", "sport", "travel", "jogging", "walking", "gym", "no"]
+                    }
+                ]
+                  },       
+            q_c: {
+                id: "q_c",
+                title: "c. DU LỊCH VÀ KHÁCH SẠN (6 Tình huống)",
+                items: [
+                    { id: 1, subTopic: "Tình huống 1: Mục đích chuyến đi", qEn: "Are you on holiday or business?", qVi: "Bạn đang đi nghỉ mát hay đi công tác vậy?", aEn: "I am on holiday with my family.", aVi: "Tôi đang đi nghỉ mát cùng gia đình.", keywordsAsk: ["holiday", "business", "purpose"], keywordsAns: ["holiday", "vacation", "business", "work", "family", "travel"] },
+                    { id: 2, subTopic: "Tình huống 2: Đặt phòng khách sạn", qEn: "Do you have any available rooms for tonight?", qVi: "Khách sạn còn phòng trống cho tối nay không?", aEn: "Yes, we have deluxe rooms available.", aVi: "Vâng, chúng tôi còn phòng hạng sang.", keywordsAsk: ["available rooms", "tonight", "room"], keywordsAns: ["deluxe", "room", "rooms", "available", "single", "double", "full", "booked"] },
+                    { id: 3, subTopic: "Tình huống 3: Hỏi đường đến bến xe", qEn: "Could you tell me how to get to the central bus station?", qVi: "Làm ơn chỉ giúp tôi cách đến bến xe trung tâm?", aEn: "You can take a taxi or a direct subway line.", aVi: "Bạn có thể đi taxi hoặc tuyến tàu điện ngầm trực tiếp.", keywordsAsk: ["bus station", "how to get", "central"], keywordsAns: ["taxi", "subway", "bus", "straight", "turn", "left", "right", "take"] },
+                    { id: 4, subTopic: "Tình huống 4: Mua vé máy bay", qEn: "How much is a one-way ticket to Hanoi?", qVi: "Vé một chiều đi Hà Nội giá bao nhiêu?", aEn: "It costs one hundred and fifty dollars.", aVi: "Giá vé là một trăm năm mươi đô la.", keywordsAsk: ["one-way ticket", "hanoi", "how much"], keywordsAns: ["hundred", "fifty", "dollars", "costs", "price", "ticket", "150"] },
+                    { id: 5, subTopic: "Tình huống 5: Hỏi giờ máy bay cất cánh", qEn: "What time does flight VN123 depart?", qVi: "Chuyến bay VN123 cất cánh lúc mấy giờ?", aEn: "It departs at nine o'clock in the morning.", aVi: "Chuyến bay khởi hành lúc 9 giờ sáng.", keywordsAsk: ["depart", "flight", "what time"], keywordsAns: ["departs", "nine", "o'clock", "morning", "afternoon", "evening", "am", "pm", "9"] },
+                    { id: 6, subTopic: "Tình huống 6: Đổi phòng khách sạn", qEn: "Can I change my room? The air conditioner is broken.", qVi: "Tôi có thể đổi phòng được không? Máy điều hòa bị hỏng rồi.", aEn: "Certainly, let me arrange another room for you immediately.", aVi: "Dạ được chứ, để tôi sắp xếp phòng khác cho quý khách ngay.", keywordsAsk: ["change my room", "air conditioner", "broken"], keywordsAns: ["certainly", "sure", "arrange", "another room", "immediately", "sorry", "change"] }
+                ]
+            },
+            q_d: {
+                id: "q_d",
+                title: "d. MUA SẮM VÀ ĂN UỐNG (6 Tình huống)",
+                items: [
+                    { id: 1, subTopic: "Tình huống 1: Hỏi giá áo sơ mi", qEn: "How much is this blue silk shirt?", qVi: "Chiếc áo sơ mi lụa màu xanh này giá bao nhiêu?", aEn: "It is forty-five dollars, sir.", aVi: "Thưa ông, giá là 45 đô la.", keywordsAsk: ["blue silk shirt", "shirt", "how much"], keywordsAns: ["forty", "five", "dollars", "price", "sir", "45"] },
+                    { id: 2, subTopic: "Tình huống 2: Thử quần áo", qEn: "Where is the fitting room, please?", qVi: "Phòng thử đồ ở đâu vậy?", aEn: "The fitting room is over there, next to the mirror.", aVi: "Phòng thử đồ ở đằng kia, cạnh chiếc gương lớn.", keywordsAsk: ["fitting room", "where"], keywordsAns: ["fitting room", "over there", "next to", "mirror", "left", "right", "corner"] },
+                    { id: 3, subTopic: "Tình huống 3: Gọi món tráng miệng", qEn: "Would you like some dessert after the meal?", qVi: "Quý khách có muốn dùng chút món tráng miệng sau bữa ăn không?", aEn: "Yes, please give me a portion of chocolate cake.", aVi: "Vâng, làm ơn cho tôi một phần bánh sô-cô-la.", keywordsAsk: ["dessert", "after the meal"], keywordsAns: ["chocolate", "cake", "ice cream", "fruit", "dessert", "please", "portion"] },
+                    { id: 4, subTopic: "Tình huống 4: Thanh toán hóa đơn", qEn: "Can I pay by credit card or cash?", qVi: "Tôi có thể thanh toán bằng thẻ tín dụng hay tiền mặt?", aEn: "We accept both cash and international credit cards.", aVi: "Chúng tôi nhận cả tiền mặt lẫn thẻ tín dụng quốc tế.", keywordsAsk: ["credit card", "cash", "pay"], keywordsAns: ["accept", "both", "cash", "credit", "card", "cards", "international"] },
+                    { id: 5, subTopic: "Tình huống 5: Gọi thêm nước uống", qEn: "Could you bring me another glass of iced tea?", qVi: "Bạn có thể mang cho tôi thêm một cốc trà đá nữa không?", aEn: "Right away, sir. Anything else?", aVi: "Ngay đây thưa ông. Quý khách dùng thêm gì nữa không?", keywordsAsk: ["iced tea", "another glass", "bring me"], keywordsAns: ["right away", "sure", "certainly", "anything else", "sir", "tea", "minute"] },
+                    { id: 6, subTopic: "Tình huống 6: Đặt bàn nhà hàng", qEn: "I'd like to book a table for four people at 7 PM.", qVi: "Tôi muốn đặt một bàn cho 4 người vào lúc 7 giờ tối.", aEn: "Understood, your table is reserved in the main hall.", aVi: "Đã rõ, bàn của quý khách được đặt ở sảnh chính.", keywordsAsk: ["book a table", "four people", "7 pm"], keywordsAns: ["understood", "table", "reserved", "main hall", "window", "ready", "four"] }
+                ]
+            },
+            q_e: {
+                id: "q_e",
+                title: "e. CÔNG SỞ VÀ ĐỜI SỐNG (6 Tình huống)",
+                items: [
+                    { id: 1, subTopic: "Tình huống 1: Bắt đầu họp công ty", qEn: "Are all team members present today?", qVi: "Hôm nay tất cả thành viên trong nhóm đã có mặt đủ chưa?", aEn: "Yes, everyone is here except John who is on leave.", aVi: "Vâng, mọi người đều có mặt trừ John đang xin nghỉ phép.", keywordsAsk: ["team members", "present"], keywordsAns: ["everyone", "here", "except", "leave", "absent", "present", "ready"] },
+                    { id: 2, subTopic: "Tình huống 2: Bàn về dự án mới", qEn: "What do you think about our new marketing strategy?", qVi: "Bạn nghĩ sao về chiến lược tiếp thị mới của chúng ta?", aEn: "I believe it will attract a huge number of young customers.", aVi: "Tôi tin rằng chiến lược này sẽ thu hút lượng lớn khách hàng trẻ.", keywordsAsk: ["marketing strategy", "think about"], keywordsAns: ["believe", "think", "attract", "customers", "great", "good", "effective", "strategy"] },
+                    { id: 3, subTopic: "Tình huống 3: Trò chuyện cuối tuần", qEn: "Do you have any fun plans for this weekend?", qVi: "Cuối tuần này bạn có dự định vui chơi gì chưa?", aEn: "I am planning to visit my grandparents in the countryside.", aVi: "Tôi dự định về quê thăm ông bà.", keywordsAsk: ["plans", "weekend"], keywordsAns: ["planning", "visit", "grandparents", "countryside", "travel", "relax", "home", "friends"] },
+                    { id: 4, subTopic: "Tình huống 4: Hỏi thăm sức khỏe", qEn: "You look tired. Are you feeling okay?", qVi: "Trông bạn mệt mỏi quá. Bạn thấy trong người ổn chứ?", aEn: "I caught a mild cold, but I'm taking medicine now.", aVi: "Tôi bị cảm lạnh nhẹ, nhưng giờ đang uống thuốc rồi.", keywordsAsk: ["tired", "feeling okay"], keywordsAns: ["cold", "sick", "tired", "medicine", "better", "fine", "okay", "headache"] },
+                    { id: 5, subTopic: "Tình huống 5: Hỏi ý kiến công việc", qEn: "Could you help me review this financial report?", qVi: "Bạn có thể giúp tôi xem lại báo cáo tài chính này được không?", aEn: "Sure, let me check the numbers right now.", aVi: "Chắc chắn rồi, để tôi kiểm tra các con số ngay đây.", keywordsAsk: ["review", "financial report"], keywordsAns: ["sure", "check", "numbers", "right now", "help", "report", "look"] },
+                    { id: 6, subTopic: "Tình huống 6: Khen ngợi đồng nghiệp", qEn: "Your presentation today was exceptionally impressive!", qVi: "Bài thuyết trình hôm nay của bạn vô cùng ấn tượng!", aEn: "Thank you so much for your kind encouragement.", aVi: "Cảm ơn bạn rất nhiều vì lời động viên tốt đẹp.", keywordsAsk: ["presentation", "impressive"], keywordsAns: ["thank you", "thanks", "kind", "encouragement", "glad", "happy", "appreciate"] }
+                ]
+            },
+            q_f: {
+                id: "q_f",
+                title: "f. TẠI NHÀ HÀNG (2 Tình huống)",
+                items: [
+                    { id: 1, subTopic: "Tình huống 1: Gọi món", qEn: "Can I see the menu, please?", qVi: "Cho tôi xin xem thực đơn được không?", aEn: "Here is the menu. What would you like to order?", aVi: "Thực đơn đây ạ. Quý khách muốn gọi món gì?", keywordsAsk: ["menu", "see"], keywordsAns: ["menu", "here", "order", "like", "drink", "food"] },
+                    { id: 2, subTopic: "Tình huống 2: Thanh toán", qEn: "Excuse me, check please!", qVi: "Xin lỗi, cho tôi tính tiền với!", aEn: "Sure, cash or credit card?", aVi: "Vâng, quý khách thanh toán tiền mặt hay thẻ tín dụng ạ?", keywordsAsk: ["check", "bill", "pay"], keywordsAns: ["sure", "cash", "credit", "card", "bill", "total"] }
+                ]
+            },
+            q_g: {
+                id: "q_g",
+                title: "g. TẠI KHÁCH SẠN (2 Tình huống)",
+                items: [
+                    { id: 1, subTopic: "Tình huống 1: Nhận phòng", qEn: "I have a reservation. My name is Quang.", qVi: "Tôi đã đặt phòng trước. Tên tôi là Quảng.", aEn: "Welcome, Mr. Quang. Here is your room key.", aVi: "Chào mừng ông Quảng. Đây là chìa khóa phòng của ông ạ.", keywordsAsk: ["reservation", "check in"], keywordsAns: ["welcome", "room", "key", "floor", "passport", "glad"] },
+{ id: 2, subTopic: "Tình huống 2: Hỏi mật khẩu Wifi", qEn: "What is the Wifi password, please?", qVi: "Làm ơn cho tôi hỏi mật khẩu Wifi là gì vậy?", aEn: "It is welcome2026, sir.", aVi: "Dạ thưa, mật khẩu là welcome2026 ạ.", keywordsAsk: ["wifi", "password"], keywordsAns: ["welcome", "password", "free", "connect", "network", "2026"] }
+]
+},
+q_h: {
+id: "q_h",
+title: "h. KHÁM BỆNH (8 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Hỏi thăm triệu chứng", qEn: "What seems to be the problem today?", qVi: "Hôm nay bạn cảm thấy trong người thế nào?", aEn: "I have a bad headache and a sore throat.", aVi: "Tôi bị đau đầu dữ dội và đau rát cổ họng.", keywordsAsk: ["problem", "wrong", "matter"], keywordsAns: ["headache", "sore throat", "pain", "sick", "fever", "cough", "hurt"] },
+{ id: 2, subTopic: "Tình huống 2: Cảm cúm & Sốt", qEn: "Do you have a fever or a cough?", qVi: "Bạn có bị sốt hay ho không?", aEn: "Yes, I think I caught a cold. I feel very tired.", aVi: "Có, tôi nghĩ mình bị cảm lạnh rồi. Tôi thấy rất mệt.", keywordsAsk: ["fever", "cough"], keywordsAns: ["cold", "flu", "tired", "fever", "cough", "temperature", "chills"] },
+{ id: 3, subTopic: "Tình huống 3: Đau bụng & Tiêu hóa", qEn: "Where does it hurt?", qVi: "Bạn bị đau ở chỗ nào?", aEn: "I have a stomachache after eating seafood.", aVi: "Tôi bị đau bụng sau khi ăn hải sản.", keywordsAsk: ["where", "hurt"], keywordsAns: ["stomachache", "stomach", "belly", "eating", "seafood", "pain", "here"] },
+{ id: 4, subTopic: "Tình huống 4: Thời gian phát bệnh", qEn: "How long have you felt like this?", qVi: "Bạn bị như thế này bao lâu rồi?", aEn: "For about two days since yesterday morning.", aVi: "Khoảng hai ngày rồi, từ sáng hôm qua ạ.", keywordsAsk: ["how long", "felt"], keywordsAns: ["two days", "days", "yesterday", "morning", "week", "since", "hours"] },
+{ id: 5, subTopic: "Tình huống 5: Bệnh mãn tính - Huyết áp & Tiểu đường", qEn: "Do you have any medical conditions?", qVi: "Bạn có bệnh lý nền nào không?", aEn: "I have high blood pressure and mild diabetes.", aVi: "Tôi bị bệnh cao huyết áp và tiểu đường nhẹ.", keywordsAsk: ["medical conditions", "history"], keywordsAns: ["blood pressure", "diabetes", "heart", "asthma", "none", "healthy", "condition"] },
+{ id: 6, subTopic: "Tình huống 6: Dị ứng thuốc", qEn: "Are you allergic to any medicine?", qVi: "Bạn có bị dị ứng với loại thuốc nào không?", aEn: "No, I have no drug allergies.", aVi: "Không, tôi không bị dị ứng thuốc nào cả.", keywordsAsk: ["allergic", "medicine"], keywordsAns: ["allergies", "allergic", "none", "drug", "medicine", "penicillin", "safe"] },
+{ id: 7, subTopic: "Tình huống 7: Đau răng & Xương khớp", qEn: "What is wrong with your back and teeth?", qVi: "Lưng và răng của bạn bị làm sao vậy?", aEn: "I have a terrible toothache and back pain.", aVi: "Tôi bị đau răng dữ dội và đau lưng.", keywordsAsk: ["back", "teeth", "wrong"], keywordsAns: ["toothache", "back pain", "terrible", "hurt", "aching", "sore"] },
+{ id: 8, subTopic: "Tình huống 8: Đơn thuốc & Cách dùng", qEn: "How should I take this medicine?", qVi: "Tôi nên uống thuốc này như thế nào ạ?", aEn: "Take two pills twice a day after meals.", aVi: "Uống hai viên mỗi lần, ngày hai lần sau bữa ăn.", keywordsAsk: ["how should i take", "medicine"], keywordsAns: ["pills", "tablets", "twice", "day", "after meals", "before", "water", "morning"] }
+]
+},
+q_i: {
+id: "q_i",
+title: "i. ĐI TAXI (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Đón xe vào trung tâm", qEn: "Excuse me, can you take me to the city center?", qVi: "Xin lỗi, bạn có thể chở tôi đến trung tâm thành phố không?", aEn: "Sure, please get in the car.", aVi: "Chắc chắn rồi, mời bạn lên xe.", keywordsAsk: ["city center", "take me"], keywordsAns: ["sure", "get in", "car", "hop in", "welcome", "course"] },
+{ id: 2, subTopic: "Tình huống 2: Xác nhận tài xế Grab", qEn: "Are you my Grab driver? My name is Quang.", qVi: "Bạn có phải tài xế Grab của tôi không? Tên tôi là Quảng.", aEn: "Yes, I am. Please put on your seatbelt.", aVi: "Vâng, đúng là tôi. Bạn vui lòng thắt dây an toàn nhé.", keywordsAsk: ["grab driver", "driver"], keywordsAns: ["seatbelt", "put on", "driver", "destination", "ready", "confirm"] },
+{ id: 3, subTopic: "Tình huống 3: Hỏi giá ra sân bay", qEn: "How much does it cost to the airport?", qVi: "Đi ra sân bay hết bao nhiêu tiền vậy?", aEn: "It is about fifteen dollars by meter.", aVi: "Khoảng 15 đô la tính theo đồng hồ ạ.", keywordsAsk: ["airport", "cost"], keywordsAns: ["fifteen", "dollars", "meter", "about", "fixed", "price", "15"] }
+]
+},
+q_k: {
+id: "q_k",
+title: "k. Ở TIỆM THUỐC TÂY (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Đau đầu và Đau họng", qEn: "Hello, I have a headache and a sore throat.", qVi: "Xin chào, tôi bị đau đầu và đau họng.", aEn: "You should take these painkillers after meals.", aVi: "Bạn nên uống thuốc giảm đau này sau bữa ăn.", keywordsAsk: ["headache", "sore throat"], keywordsAns: ["painkillers", "medicine", "after meals", "throat", "tablets", "take"] },
+{ id: 2, subTopic: "Tình huống 2: Đau bụng", qEn: "Do you have any medicine for stomachache?", qVi: "Bạn có thuốc trị đau bụng không?", aEn: "Yes, take two tablets twice a day.", aVi: "Có ạ, bạn uống 2 viên mỗi ngày 2 lần nhé.", keywordsAsk: ["medicine", "stomachache"], keywordsAns: ["tablets", "pills", "twice", "day", "stomach", "water", "take"] },
+{ id: 3, subTopic: "Tình huống 3: Băng cá nhân và Vitamin", qEn: "Can I buy a box of bandages and some vitamins?", qVi: "Tôi có thể mua một hộp băng cá nhân và ít vitamin không?", aEn: "Here you are. That will be ten dollars.", aVi: "Của bạn đây ạ. Tổng cộng hết 10 đô la.", keywordsAsk: ["bandages", "vitamins"], keywordsAns: ["here you are", "ten", "dollars", "total", "bag", "10"] }
+]
+},
+q_l: {
+id: "q_l",
+title: "l. Ở TIỆM HỚT TÓC (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Cắt tóc & Gội đầu", qEn: "I would like a haircut and a shampoo, please.", qVi: "Tôi muốn cắt tóc và gội đầu ạ.", aEn: "Sure, please have a seat right here.", aVi: "Vâng, mời bạn ngồi vào ghế này ạ.", keywordsAsk: ["haircut", "shampoo"], keywordsAns: ["sure", "seat", "chair", "right here", "welcome", "wait"] },
+{ id: 2, subTopic: "Tình huống 2: Chọn kiểu tóc", qEn: "How would you like your hair cut?", qVi: "Bạn muốn cắt tóc kiểu như thế nào?", aEn: "Just trim it a little bit on the sides.", aVi: "Chỉ cần tỉa ngắn một chút ở hai bên thôi.", keywordsAsk: ["how would you like", "hair cut"], keywordsAns: ["trim", "little bit", "sides", "short", "layer", "bangs", "top"] },
+{ id: 3, subTopic: "Tình huống 3: Dặn dò độ dài", qEn: "Please do not cut it too short.", qVi: "Làm ơn đừng cắt ngắn quá nhé.", aEn: "Do not worry, I will keep it natural.", aVi: "Đừng lo, tôi sẽ giữ độ dài tự nhiên cho bạn.", keywordsAsk: ["too short", "do not cut"], keywordsAns: ["worry", "natural", "okay", "sure", "careful", "length"] }
+]
+},
+q_m: {
+id: "q_m",
+title: "m. Ở HẢI QUAN (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Xuất trình hộ chiếu", qEn: "May I see your passport and boarding pass?", qVi: "Tôi có thể xem hộ chiếu và thẻ lên máy bay của bạn không?", aEn: "Here you go, officer.", aVi: "Của tôi đây ạ, thưa cán bộ hải quan.", keywordsAsk: ["passport", "boarding pass"], keywordsAns: ["here", "officer", "passport", "please", "thank"] },
+{ id: 2, subTopic: "Tình huống 2: Mục đích nhập cảnh", qEn: "What is the purpose of your visit?", qVi: "Mục đích chuyến đi của bạn là gì?", aEn: "I am here for sightseeing and vacation.", aVi: "Tôi đến đây để tham quan và nghỉ dưỡng.", keywordsAsk: ["purpose", "visit"], keywordsAns: ["sightseeing", "vacation", "holiday", "travel", "business", "visit", "family"] },
+{ id: 3, subTopic: "Tình huống 3: Khai báo hành lý", qEn: "Do you have anything to declare?", qVi: "Bạn có đồ gì cần khai báo hải quan không?", aEn: "No, I only have personal belongings.", aVi: "Không, tôi chỉ có hành lý cá nhân thôi ạ.", keywordsAsk: ["declare", "anything"], keywordsAns: ["personal", "belongings", "nothing", "clothes", "gifts", "declare"] }
+]
+},
+q_n: {
+id: "q_n",
+title: "n. THỨC ĂN NHANH (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Gọi bánh mì & khoai tây", qEn: "Hi, can I get a cheeseburger and large fries?", qVi: "Chào bạn, cho tôi một bánh mì kẹp phô mai và khoai tây chiên cỡ lớn?", aEn: "Would you like a drink with that?", aVi: "Bạn có muốn gọi thêm đồ uống kèm theo không?", keywordsAsk: ["cheeseburger", "fries"], keywordsAns: ["drink", "soda", "coke", "combo", "meal", "anything else"] },
+{ id: 2, subTopic: "Tình huống 2: Ăn tại chỗ hay mang đi", qEn: "For here or to go?", qVi: "Bạn dùng tại quán hay mang đi?", aEn: "To go, please. Can I have extra ketchup?", aVi: "Cho tôi mang đi nhé. Cho tôi xin thêm tương cà chua.", keywordsAsk: ["for here", "to go"], keywordsAns: ["to go", "for here", "take away", "ketchup", "sauce", "please"] },
+{ id: 3, subTopic: "Tình huống 3: Thời gian chờ món", qEn: "How long will my order take?", qVi: "Món của tôi mất khoảng bao lâu thì xong?", aEn: "It will be ready in five minutes.", aVi: "Sẽ xong sau 5 phút nữa ạ.", keywordsAsk: ["how long", "order"], keywordsAns: ["ready", "five", "minutes", "shortly", "soon", "wait", "5"] }
+]
+},
+q_o: {
+id: "q_o",
+title: "o. QUÁN CÀ PHÊ (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Gọi cà phê", qEn: "Good morning! What would you like to drink?", qVi: "Chào buổi sáng! Bạn muốn uống gì ạ?", aEn: "I would like an iced milk coffee, please.", aVi: "Cho tôi một ly cà phê sữa đá nhé.", keywordsAsk: ["drink", "good morning"], keywordsAns: ["iced", "milk", "coffee", "tea", "latte", "americano", "juice"] },
+{ id: 2, subTopic: "Tình huống 2: Lượng đường và đá", qEn: "Would you like less sugar and less ice?", qVi: "Bạn có muốn ít đường và ít đá không?", aEn: "Yes, less sugar please.", aVi: "Vâng, cho tôi ít đường nhé.", keywordsAsk: ["sugar", "ice"], keywordsAns: ["less sugar", "less ice", "normal", "sweet", "sugar", "ice", "please"] },
+{ id: 3, subTopic: "Tình huống 3: Nước ép & Sinh tố", qEn: "Do you have fresh orange juice or smoothie?", qVi: "Quán có nước cam tươi hay sinh tố không?", aEn: "Yes, our mango smoothie is very delicious.", aVi: "Có ạ, món sinh tố xoài của quán rất ngon.", keywordsAsk: ["orange juice", "smoothie"], keywordsAns: ["mango", "smoothie", "orange", "juice", "fresh", "delicious", "available"] }
+]
+},
+q_p: {
+id: "q_p",
+title: "p. RẠP CHIẾU PHIM (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Mua vé xem phim", qEn: "Two tickets for the action movie at 7 PM, please.", qVi: "Cho tôi 2 vé xem phim hành động lúc 7 giờ tối nhé.", aEn: "Which row would you like to sit in?", aVi: "Bạn muốn ngồi ở hàng ghế nào ạ?", keywordsAsk: ["tickets", "action movie"], keywordsAns: ["row", "seat", "middle", "front", "back", "screen", "sit"] },
+{ id: 2, subTopic: "Tình huống 2: Chọn ghế ngồi", qEn: "I prefer seats in the middle of the theater.", qVi: "Tôi thích ngồi ở hàng ghế giữa rạp chiếu phim.", aEn: "Here are your tickets and popcorn.", aVi: "Vé và bắp rang bơ của bạn đây ạ.", keywordsAsk: ["seats", "middle"], keywordsAns: ["tickets", "popcorn", "drinks", "enjoy", "movie", "here"] },
+{ id: 3, subTopic: "Tình huống 3: Giờ bắt đầu hòa nhạc", qEn: "What time does the live music concert start?", qVi: "Buổi hòa nhạc trực tiếp bắt đầu lúc mấy giờ?", aEn: "It starts at eight o'clock tonight.", aVi: "Chương trình bắt đầu lúc 8 giờ tối nay ạ.", keywordsAsk: ["concert", "start"], keywordsAns: ["starts", "eight", "o'clock", "tonight", "pm", "doors", "8"] }
+]
+},
+q_q: {
+id: "q_q",
+title: "q. PHÒNG TRIỂN LÃM (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Giá vé vào cổng", qEn: "How much is the entrance ticket to the art gallery?", qVi: "Vé vào cổng phòng triển lãm tranh là bao nhiêu?", aEn: "Admission is free for all visitors today.", aVi: "Hôm nay miễn phí vé vào cửa cho tất cả khách tham quan.", keywordsAsk: ["entrance ticket", "art gallery"], keywordsAns: ["admission", "free", "visitors", "today", "dollars", "ticket"] },
+{ id: 2, subTopic: "Tình huống 2: Quy định chụp ảnh", qEn: "Am I allowed to take photos of the paintings?", qVi: "Tôi có được phép chụp ảnh các bức tranh không?", aEn: "Yes, but please turn off your flash.", aVi: "Được ạ, nhưng vui lòng tắt đèn flash nhé.", keywordsAsk: ["take photos", "paintings"], keywordsAns: ["turn off", "flash", "photos", "allowed", "camera", "please"] },
+{ id: 3, subTopic: "Tình huống 3: Hỏi tác giả bức tranh", qEn: "Who painted this beautiful landscape?", qVi: "Ai đã vẽ bức tranh phong cảnh tuyệt đẹp này vậy?", aEn: "It was painted by a famous Vietnamese artist.", aVi: "Nó được vẽ bởi một họa sĩ nổi tiếng người Việt Nam.", keywordsAsk: ["who painted", "landscape"], keywordsAns: ["painted", "famous", "vietnamese", "artist", "painter", "century"] }
+]
+},
+q_r: {
+id: "q_r",
+title: "r. Ở TIỆM ĐỒ CỔ (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Tuổi đời bình gốm", qEn: "How old is this ceramic vase?", qVi: "Chiếc bình gốm cổ này có tuổi đời bao lâu rồi?", aEn: "It is over one hundred years old.", aVi: "Nó đã hơn một trăm năm tuổi rồi ạ.", keywordsAsk: ["ceramic vase", "how old"], keywordsAns: ["over", "hundred", "years old", "antique", "dynasty", "100"] },
+{ id: 2, subTopic: "Tình huống 2: Tình trạng đồng hồ cổ", qEn: "Is this antique watch still working?", qVi: "Chiếc đồng hồ cổ này vẫn còn chạy tốt chứ?", aEn: "Yes, it is authentic and works very well.", aVi: "Vâng, đây là đồ thật nguyên bản và chạy rất chuẩn.", keywordsAsk: ["antique watch", "working"], keywordsAns: ["authentic", "works", "well", "original", "condition", "running"] },
+{ id: 3, subTopic: "Tình huống 3: Trả giá đồng xu cổ", qEn: "Can you lower the price a little for this coin?", qVi: "Bạn có thể bớt giá một chút cho đồng xu cổ này không?", aEn: "I can give you a special collector price.", aVi: "Tôi có thể để cho bạn mức giá ưu đãi dành cho người sưu tầm.", keywordsAsk: ["lower the price", "coin"], keywordsAns: ["special", "collector", "price", "discount", "offer", "deal"] }
+]
+},
+q_s: {
+id: "q_s",
+title: "s. HOẠT ĐỘNG TỪ THIỆN (3 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Quyên góp quần áo & sách", qEn: "I would like to donate some clothes and books.", qVi: "Tôi muốn quyên góp một ít quần áo và sách vở.", aEn: "Thank you so much for your kind heart.", aVi: "Cảm ơn tấm lòng nhân ái của bạn rất nhiều.", keywordsAsk: ["donate", "clothes"], keywordsAns: ["thank you", "thanks", "kind", "heart", "generous", "appreciate"] },
+{ id: 2, subTopic: "Tình huống 2: Tham gia tình nguyện", qEn: "How can I join this volunteer program?", qVi: "Làm thế nào để tôi tham gia chương trình tình nguyện này?", aEn: "You can fill out this registration form.", aVi: "Bạn có thể điền thông tin vào phiếu đăng ký này ạ.", keywordsAsk: ["join", "volunteer"], keywordsAns: ["fill out", "registration", "form", "sign up", "welcome", "join"] },
+{ id: 3, subTopic: "Tình huống 3: Mục đích quỹ từ thiện", qEn: "Where will the charity funds go?", qVi: "Số tiền từ thiện này sẽ được chuyển đến đâu?", aEn: "All money goes to help poor children go to school.", aVi: "Toàn bộ số tiền sẽ dùng để giúp trẻ em nghèo đến trường.", keywordsAsk: ["charity funds", "where"], keywordsAns: ["money", "help", "poor", "children", "school", "education", "support"] }
+]
+},
+q_t: {
+id: "q_t",
+title: "t. BUỔI DẠY TIẾNG ANH (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Bắt đầu tiết học", qEn: "Good morning class! Are you ready for our English lesson today?", qVi: "Chào buổi sáng cả lớp! Các em đã sẵn sàng cho bài học tiếng Anh hôm nay chưa?", aEn: "Good morning teacher! Yes, we are ready.", aVi: "Chào buổi sáng thầy/cô ạ! Vâng, chúng em đã sẵn sàng rồi ạ.", keywordsAsk: ["ready", "english lesson"], keywordsAns: ["good morning", "teacher", "ready", "lesson", "start"] },
+{ id: 2, subTopic: "Tình huống 2: Kiểm tra bài cũ", qEn: "Did everyone finish your homework last night?", qVi: "Tối qua tất cả các em đã làm xong bài tập về nhà chưa?", aEn: "Yes, I finished all the exercises in the workbook.", aVi: "Dạ rồi ạ, em đã làm xong toàn bộ bài tập trong sách bài tập.", keywordsAsk: ["finish", "homework"], keywordsAns: ["finished", "exercises", "workbook", "homework", "done", "completed"] },
+{ id: 3, subTopic: "Tình huống 3: Luyện phát âm", qEn: "Please listen carefully and repeat after me.", qVi: "Các em hãy lắng nghe thật kỹ và lặp lại theo thầy/cô nhé.", aEn: "Teacher, could you pronounce that word one more time?", aVi: "Thưa thầy/cô, thầy/cô có thể phát âm lại từ đó thêm một lần nữa được không ạ?", keywordsAsk: ["listen carefully", "repeat"], keywordsAns: ["teacher", "pronounce", "word", "one more time", "again", "slowly"] },
+{ id: 4, subTopic: "Tình huống 4: Giải thích từ vựng", qEn: "Do you understand the meaning of this new word?", qVi: "Các em có hiểu nghĩa của từ mới này không?", aEn: "Not really. Could you give us an example sentence?", aVi: "Chưa rõ lắm ạ. Thầy/cô có thể cho chúng em một câu ví dụ được không ạ?", keywordsAsk: ["understand", "meaning", "new word"], keywordsAns: ["not really", "example", "sentence", "explain", "mean", "clear"] },
+{ id: 5, subTopic: "Tình huống 5: Khuyến khích phát biểu", qEn: "Who wants to volunteer to read this paragraph aloud?", qVi: "Bạn nào muốn xung phong đọc to đoạn văn này lên nào?", aEn: "Let me try! I have practiced reading it at home.", aVi: "Để em thử ạ! Em đã luyện đọc đoạn này ở nhà rồi ạ.", keywordsAsk: ["volunteer", "read", "paragraph"], keywordsAns: ["let me try", "practiced", "reading", "home", "volunteer", "read"] },
+{ id: 6, subTopic: "Tình huống 6: Kết thúc buổi học", qEn: "Great job today! Remember to practice speaking every day.", qVi: "Hôm nay các em làm tốt lắm! Hãy nhớ luyện nói tiếng Anh mỗi ngày nhé.", aEn: "Thank you teacher! See you in the next class.", aVi: "Chúng em cảm ơn thầy/cô ạ! Hẹn gặp lại thầy/cô vào buổi học tới ạ.", keywordsAsk: ["great job", "practice speaking"], keywordsAns: ["thank you", "teacher", "see you", "next class", "goodbye"] }
+]
+},
+q_u: {
+id: "q_u",
+title: "u. ĐI CHỢ MUA HẢI SẢN & RAU CỦ (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Hỏi giá tôm tươi", qEn: "How much is one kilogram of fresh shrimp?", qVi: "Một ký tôm tươi giá bao nhiêu tiền vậy cô/chú?", aEn: "It is ten dollars a kilo. They were just caught this morning.", aVi: "Mười đô la một ký cháu ơi. Tôm mới đánh bắt sáng nay đấy.", keywordsAsk: ["fresh shrimp", "shrimp"], keywordsAns: ["ten", "dollars", "kilo", "caught", "morning", "fresh", "10"] },
+{ id: 2, subTopic: "Tình huống 2: Chọn cua biển", qEn: "Are these sea crabs fresh and full of meat?", qVi: "Mấy con cua biển này có tươi và chắc thịt không ạ?", aEn: "Yes, they are still alive and very heavy.", aVi: "Tươi chứ, chúng vẫn còn sống và rất nặng tay đây này.", keywordsAsk: ["sea crabs", "crabs"], keywordsAns: ["alive", "heavy", "fresh", "meat", "crabs", "sweet"] },
+{ id: 3, subTopic: "Tình huống 3: Nhờ làm sạch cá", qEn: "I will take this squid and two fish. Can you clean them for me?", qVi: "Tôi lấy con mực này và hai con cá. Cô làm sạch giúp tôi được không?", aEn: "Sure! I will scale and gut the fish right away.", aVi: "Được chứ! Cô sẽ đánh vảy và làm ruột cá ngay đây.", keywordsAsk: ["squid", "clean them", "fish"], keywordsAns: ["sure", "scale", "gut", "fish", "clean", "right away", "bag"] },
+{ id: 4, subTopic: "Tình huống 4: Mua rau củ sạch", qEn: "Do you have organic tomatoes and green vegetables?", qVi: "Quầy mình có cà chua hữu cơ và rau xanh không ạ?", aEn: "Yes, everything here is fresh from our local farm.", aVi: "Có chứ, tất cả rau củ ở đây đều mới hái từ vườn nhà đấy.", keywordsAsk: ["organic tomatoes", "vegetables"], keywordsAns: ["fresh", "local farm", "garden", "organic", "vegetables", "harvested"] },
+{ id: 5, subTopic: "Tình huống 5: Mua trái cây", qEn: "How much are these sweet mangoes? Can I taste a piece?", qVi: "Xoài ngọt này bán bao nhiêu một ký vậy? Tôi ăn thử một miếng được không?", aEn: "Please go ahead! They are super sweet and only three dollars a kilo.", aVi: "Mời bạn thử tự nhiên! Xoài ngọt lịm luôn, chỉ 3 đô la một ký thôi.", keywordsAsk: ["mangoes", "taste"], keywordsAns: ["go ahead", "sweet", "three", "dollars", "kilo", "try", "3"] },
+{ id: 6, subTopic: "Tình huống 6: Tính tổng tiền & Trả giá", qEn: "How much is everything altogether? Can you give me a small discount?", qVi: "Tất cả của tôi hết bao nhiêu tiền vậy? Cô bớt cho tôi một chút được không?", aEn: "Your total is twenty-two dollars. You can just pay twenty dollars.", aVi: "Tổng cộng của cháu là 22 đô. Cháu trả tròn 20 đô thôi nhé.", keywordsAsk: ["altogether", "discount"], keywordsAns: ["total", "twenty", "dollars", "pay", "discount", "20", "22"] }
+]
+},
+q_v: {
+id: "q_v",
+title: "v. THĂM BỆNH Ở BỆNH VIỆN (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Hỏi quầy lễ tân tìm phòng bệnh", qEn: "Excuse me, could you tell me which room Mr. Nam is staying in?", qVi: "Xin lỗi, vui lòng cho tôi hỏi ông Nam đang nằm điều trị ở phòng nào ạ?", aEn: "He is in room 305 on the third floor. Take the elevator on your left.", aVi: "Ông ấy ở phòng 305 trên tầng 3 ạ. Bạn đi thang máy ở phía bên trái nhé.", keywordsAsk: ["which room", "staying in"], keywordsAns: ["room", "305", "third floor", "elevator", "left", "right"] },
+{ id: 2, subTopic: "Tình huống 2: Hỏi giờ thăm bệnh", qEn: "What are the visiting hours at this hospital?", qVi: "Giờ quy định thăm bệnh nhân ở bệnh viện này là mấy giờ ạ?", aEn: "Visiting hours are from 4 PM to 7 PM every day.", aVi: "Giờ thăm bệnh là từ 4 giờ chiều đến 7 giờ tối hàng ngày ạ.", keywordsAsk: ["visiting hours", "hospital"], keywordsAns: ["visiting", "hours", "4 pm", "7 pm", "four", "seven", "every day"] },
+{ id: 3, subTopic: "Tình huống 3: Hỏi thăm sức khỏe người bệnh", qEn: "How are you feeling today? Are you in much pain?", qVi: "Hôm nay bạn cảm thấy trong người thế nào rồi? Có còn đau nhiều không?", aEn: "Thank you for coming. I feel much better than yesterday.", aVi: "Cảm ơn bạn đã đến thăm. Tôi thấy đỡ hơn hôm qua nhiều rồi.", keywordsAsk: ["feeling today", "much pain"], keywordsAns: ["thank you", "coming", "better", "yesterday", "recovering", "good"] },
+{ id: 4, subTopic: "Tình huống 4: Tặng quà thăm bệnh", qEn: "I brought you some fresh fruit and flowers. Hope you like them.", qVi: "Tôi có mang ít trái cây tươi và hoa vào cho bạn đây. Hy vọng bạn thích.", aEn: "That is so thoughtful of you! You really did not have to.", aVi: "Bạn thật chu đáo quá! Bạn không cần phải khách sáo thế đâu.", keywordsAsk: ["brought you", "fruit", "flowers"], keywordsAns: ["thoughtful", "thank", "kind", "sweet", "beautiful", "appreciate"] },
+{ id: 5, subTopic: "Tình huống 5: Hỏi ý kiến bác sĩ", qEn: "Doctor, when can my friend be discharged from the hospital?", qVi: "Thưa bác sĩ, khi nào thì bạn tôi có thể xuất viện được ạ?", aEn: "If the test results are good, he can go home this Friday.", aVi: "Nếu kết quả xét nghiệm tốt, anh ấy có thể về nhà vào thứ Sáu này.", keywordsAsk: ["discharged", "doctor"], keywordsAns: ["test", "results", "good", "go home", "friday", "tomorrow", "week"] },
+{ id: 6, subTopic: "Tình huống 6: Chào tạm biệt & Chúc mau khỏe", qEn: "Please get plenty of rest. I wish you a speedy recovery!", qVi: "Bạn hãy nghỉ ngơi thật nhiều nhé. Chúc bạn mau chóng bình phục!", aEn: "Thanks a lot for visiting me. Have a safe trip home.", aVi: "Cảm ơn bạn rất nhiều vì đã vào thăm tôi. Bạn về cẩn thận nhé.", keywordsAsk: ["rest", "speedy recovery"], keywordsAns: ["thanks", "visiting", "safe", "trip", "home", "goodbye"] }
+]
+},
+q_w: {
+id: "q_w",
+title: "w. HỎI ĐƯỜNG BẰNG GOOGLE MAPS (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Xác định vị trí hiện tại", qEn: "Excuse me, could you show me where we are on Google Maps?", qVi: "Xin lỗi, bạn có thể chỉ giúp tôi vị trí hiện tại của chúng ta trên Google Maps không?", aEn: "Sure, the blue dot here shows we are right next to the central park.", aVi: "Được chứ, chấm xanh ở đây cho thấy chúng ta đang đứng ngay cạnh công viên trung tâm.", keywordsAsk: ["where we are", "google maps"], keywordsAns: ["blue dot", "next to", "central park", "here", "street", "location"] },
+{ id: 2, subTopic: "Tình huống 2: Kiểm tra hướng đi bộ", qEn: "Google Maps says walk north, but I am not sure which way that is.", qVi: "Google Maps chỉ đi về hướng Bắc, nhưng tôi không chắc là hướng nào.", aEn: "Walk straight ahead down this street for about two hundred meters.", aVi: "Bạn cứ đi thẳng về phía trước theo con đường này khoảng 200 mét nhé.", keywordsAsk: ["walk north", "which way"], keywordsAns: ["straight", "ahead", "street", "hundred", "meters", "direction", "200"] },
+{ id: 3, subTopic: "Tình huống 3: Tìm lối vào địa điểm", qEn: "The map says I have arrived, but I cannot see the museum entrance.", qVi: "Bản đồ báo tôi đã đến nơi rồi, nhưng tôi không thấy cổng vào bảo tàng đâu cả.", aEn: "The main entrance is around the corner on the other side of the building.", aVi: "Cổng chính nằm ở góc rẽ phía bên kia tòa nhà bạn ạ.", keywordsAsk: ["museum entrance", "arrived"], keywordsAns: ["entrance", "around the corner", "other side", "building", "gate", "behind"] },
+{ id: 4, subTopic: "Tình huống 4: Ước tính thời gian di chuyển", qEn: "How long does it take to get to the train station from here?", qVi: "Từ đây đi đến ga tàu hỏa mất khoảng bao lâu ạ?", aEn: "It takes about ten minutes by taxi or twenty-five minutes on foot.", aVi: "Đi taxi mất khoảng 10 phút hoặc đi bộ mất 25 phút ạ.", keywordsAsk: ["train station", "how long"], keywordsAns: ["ten minutes", "taxi", "twenty-five", "on foot", "walk", "10", "25"] },
+{ id: 5, subTopic: "Tình huống 5: Tìm trạm xe buýt trên bản đồ", qEn: "Which bus route should I take according to this navigation app?", qVi: "Theo ứng dụng chỉ đường này thì tôi nên bắt tuyến xe buýt số mấy?", aEn: "You need to take Bus Number 15 from the stop across the road.", aVi: "Bạn cần bắt xe buýt số 15 tại trạm đối diện bên kia đường.", keywordsAsk: ["bus route", "navigation app"], keywordsAns: ["bus", "number 15", "stop", "across", "road", "route", "15"] },
+{ id: 6, subTopic: "Tình huống 6: Pin yếu & Xin chỉ đường trực tiếp", qEn: "My phone battery is dead. Could you point me toward the night market?", qVi: "Điện thoại tôi hết pin mất rồi. Bạn có thể chỉ hướng đến chợ đêm giúp tôi không?", aEn: "Go straight to the traffic lights, then turn right. You will see it immediately.", aVi: "Bạn đi thẳng tới đèn giao thông rồi rẽ phải. Bạn sẽ thấy chợ ngay lập tức.", keywordsAsk: ["battery is dead", "night market"], keywordsAns: ["straight", "traffic lights", "turn right", "turn left", "see it", "immediately"] }
+]
+},
+q_x: {
+id: "q_x",
+title: "x. ĐI NGÂN HÀNG & ĐỔI NGOẠI TỆ (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Đổi tiền ngoại tệ", qEn: "I would like to exchange five hundred US dollars into Vietnamese Dong.", qVi: "Tôi muốn đổi 500 đô la Mỹ sang tiền Việt Nam Đồng.", aEn: "Certainly. May I see your passport and check today's exchange rate?", aVi: "Vâng ạ. Vui lòng cho tôi xem hộ chiếu của quý khách để làm thủ tục theo tỷ giá hôm nay.", keywordsAsk: ["exchange", "us dollars", "vietnamese dong"], keywordsAns: ["certainly", "passport", "exchange rate", "form", "sign", "sure"] },
+{ id: 2, subTopic: "Tình huống 2: Hỏi tỷ giá hối đoái", qEn: "What is the current exchange rate for Euros today?", qVi: "Tỷ giá đồng Euro hôm nay là bao nhiêu vậy ạ?", aEn: "You can see the updated rates displayed on the electronic board behind me.", aVi: "Quý khách có thể xem tỷ giá cập nhật trên bảng điện tử phía sau tôi ạ.", keywordsAsk: ["exchange rate", "euros"], keywordsAns: ["updated", "rates", "electronic board", "behind", "screen", "today"] },
+{ id: 3, subTopic: "Tình huống 3: Mở tài khoản ngân hàng", qEn: "I would like to open a personal savings account.", qVi: "Tôi muốn mở một tài khoản tiết kiệm cá nhân.", aEn: "Please fill out this application form and provide your ID card.", aVi: "Vui lòng điền vào mẫu đơn đăng ký này và xuất trình căn cước công dân ạ.", keywordsAsk: ["open", "savings account"], keywordsAns: ["fill out", "application form", "id card", "passport", "sign", "account"] },
+{ id: 4, subTopic: "Tình huống 4: Chuyển tiền quốc tế", qEn: "How long does an international wire transfer usually take?", qVi: "Chuyển tiền quốc tế thường mất bao lâu thì người nhận nhận được ạ?", aEn: "It normally takes two to three business days to arrive.", aVi: "Thông thường sẽ mất từ 2 đến 3 ngày làm việc tiền sẽ tới nơi ạ.", keywordsAsk: ["wire transfer", "how long"], keywordsAns: ["two", "three", "business days", "arrive", "days", "account"] },
+{ id: 5, subTopic: "Tình huống 5: Thẻ ATM bị nuốt / khóa", qEn: "Excuse me, the ATM outside just swallowed my credit card!", qVi: "Xin lỗi, cây ATM bên ngoài vừa mới nuốt thẻ tín dụng của tôi rồi!", aEn: "Do not worry. Please show me your ID so our staff can retrieve it for you.", aVi: "Đừng lo lắng ạ. Vui lòng xuất trình giấy tờ tùy thân để nhân viên lấy thẻ lại giúp bạn.", keywordsAsk: ["atm", "swallowed", "credit card"], keywordsAns: ["worry", "id", "staff", "retrieve", "card", "help", "back"] },
+{ id: 6, subTopic: "Tình huống 6: Đổi tiền lẻ", qEn: "Could you break this one-hundred-dollar bill into smaller notes?", qVi: "Bạn có thể đổi tờ 100 đô này ra các tờ tiền mệnh giá nhỏ hơn giúp tôi không?", aEn: "Sure, would you like twenty-dollar bills or ten-dollar bills?", aVi: "Được ạ, quý khách muốn lấy tờ 20 đô hay tờ 10 đô ạ?", keywordsAsk: ["break", "smaller notes"], keywordsAns: ["sure", "twenty", "ten", "bills", "notes", "change", "20", "10"] }
+]
+},
+q_y: {
+id: "q_y",
+title: "y. THUÊ XE & GẶP SỰ CỐ GIAO THÔNG (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Thuê xe máy / ô tô du lịch", qEn: "How much does it cost to rent a motorbike for three days?", qVi: "Thuê một chiếc xe máy trong 3 ngày giá bao nhiêu tiền ạ?", aEn: "It is eight dollars per day, including two helmets and insurance.", aVi: "Giá là 8 đô la mỗi ngày, đã bao gồm hai mũ bảo hiểm và bảo hiểm xe ạ.", keywordsAsk: ["rent a motorbike", "three days"], keywordsAns: ["eight", "dollars", "per day", "helmets", "insurance", "deposit", "8"] },
+{ id: 2, subTopic: "Tình huống 2: Kiểm tra giấy tờ thuê xe", qEn: "Do I need an international driving permit to rent a car here?", qVi: "Tôi có cần bằng lái xe quốc tế để thuê ô tô ở đây không?", aEn: "Yes, we need to see your valid driving license and passport.", aVi: "Vâng, chúng tôi cần kiểm tra bằng lái xe hợp lệ và hộ chiếu của bạn.", keywordsAsk: ["driving permit", "rent a car"], keywordsAns: ["valid", "driving license", "passport", "permit", "copy", "need"] },
+{ id: 3, subTopic: "Tình huống 3: Đổ xăng tại trạm xăng", qEn: "Please fill up the tank with regular unleaded petrol.", qVi: "Làm ơn đổ đầy bình xăng loại thông thường giúp tôi.", aEn: "No problem. That comes to twenty-five dollars in total.", aVi: "Không vấn đề gì. Tổng cộng hết 25 đô la ạ.", keywordsAsk: ["fill up", "petrol", "tank"], keywordsAns: ["no problem", "twenty-five", "dollars", "total", "full", "25"] },
+{ id: 4, subTopic: "Tình huống 4: Xe bị thủng lốp", qEn: "Excuse me, my car has a flat tire. Is there a repair shop nearby?", qVi: "Xin lỗi, xe tôi bị xịt lốp rồi. Gần đây có tiệm sửa xe nào không ạ?", aEn: "Yes, there is a garage just five hundred meters down this road.", aVi: "Có đấy, có một gara sửa xe cách đây chỉ 500 mét theo đường này thôi.", keywordsAsk: ["flat tire", "repair shop"], keywordsAns: ["garage", "hundred", "meters", "road", "mechanic", "fix", "500"] },
+{ id: 5, subTopic: "Tình huống 5: Hỏi chỗ đỗ xe", qEn: "Am I allowed to park my car in front of this building?", qVi: "Tôi có được phép đỗ xe ô tô ở phía trước tòa nhà này không?", aEn: "No, this is a no-parking zone. Please use the underground parking lot.", aVi: "Không được ạ, đây là khu vực cấm đỗ xe. Vui lòng xuống hầm gửi xe nhé.", keywordsAsk: ["park my car", "building"], keywordsAns: ["no-parking", "zone", "underground", "parking lot", "basement", "allowed"] },
+{ id: 6, subTopic: "Tình huống 6: Trả xe & Nhận lại tiền cọc", qEn: "I am returning the car now. Everything is in good condition.", qVi: "Tôi đến trả xe đây. Mọi thứ đều nguyên vẹn và hoạt động tốt.", aEn: "Let me do a quick check, and then I will refund your security deposit.", aVi: "Để tôi kiểm tra nhanh qua một lượt rồi sẽ hoàn lại tiền đặt cọc cho bạn ngay.", keywordsAsk: ["returning the car", "good condition"], keywordsAns: ["quick check", "refund", "deposit", "keys", "thank", "good"] }
+]
+},
+q_z: {
+id: "q_z",
+title: "z. ĐẶT VÉ MÁY BAY & THỦ TỤC BAY (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Đặt vé khứ hồi", qEn: "I would like to book a round-trip ticket to Singapore next month.", qVi: "Tôi muốn đặt một vé khứ hồi đi Singapore vào tháng tới.", aEn: "Would you prefer economy class or business class?", aVi: "Quý khách muốn chọn hạng phổ thông hay hạng thương gia ạ?", keywordsAsk: ["round-trip ticket", "singapore"], keywordsAns: ["economy", "business", "class", "prefer", "date", "flight"] },
+{ id: 2, subTopic: "Tình huống 2: Chọn chỗ ngồi trên máy bay", qEn: "Can I have a window seat near the front of the plane?", qVi: "Tôi có thể chọn ghế cạnh cửa sổ ở gần phía đầu máy bay không?", aEn: "Yes, seat 12A is available. I have reserved it for you.", aVi: "Vâng, ghế 12A đang trống ạ. Tôi đã giữ chỗ đó cho quý khách rồi.", keywordsAsk: ["window seat", "front"], keywordsAns: ["seat", "12a", "available", "reserved", "window", "aisle"] },
+{ id: 3, subTopic: "Tình huống 3: Kiểm tra hành lý ký gửi", qEn: "How many kilograms of checked baggage am I allowed?", qVi: "Tôi được phép mang theo bao nhiêu ký hành lý ký gửi ạ?", aEn: "Your ticket includes twenty-three kilograms of checked luggage.", aVi: "Vé của quý khách bao gồm 23 ký hành lý ký gửi ạ.", keywordsAsk: ["checked baggage", "how many kilograms"], keywordsAns: ["twenty-three", "kilograms", "luggage", "baggage", "includes", "23"] },
+{ id: 4, subTopic: "Tình huống 4: Đổi ngày bay", qEn: "Is it possible to change my flight date to this Sunday?", qVi: "Tôi có thể đổi ngày bay sang Chủ Nhật tuần này được không?", aEn: "Yes, there is a small change fee of thirty dollars.", aVi: "Được ạ, sẽ có một khoản phí đổi vé nhỏ là 30 đô la.", keywordsAsk: ["change my flight", "sunday"], keywordsAns: ["change fee", "thirty", "dollars", "possible", "available", "30"] },
+{ id: 5, subTopic: "Tình huống 5: Quá cân hành lý tại quầy", qEn: "Excuse me, your suitcase is three kilograms overweight.", qVi: "Xin lỗi quý khách, vali của quý khách bị quá cân 3 ký rồi ạ.", aEn: "Let me take some heavy items out and put them in my backpack.", aVi: "Để tôi lấy bớt vài món đồ nặng ra và bỏ vào ba lô xách tay nhé.", keywordsAsk: ["overweight", "suitcase"], keywordsAns: ["heavy items", "backpack", "carry-on", "take", "out", "pay"] },
+{ id: 6, subTopic: "Tình huống 6: Hỏi giờ lên máy bay", qEn: "What time does boarding start and which gate is it?", qVi: "Mấy giờ bắt đầu lên máy bay và ở cửa số mấy vậy ạ?", aEn: "Boarding starts at 10:15 AM at Gate 8.", aVi: "Lên máy bay lúc 10 giờ 15 phút sáng tại cửa số 8 ạ.", keywordsAsk: ["boarding start", "which gate"], keywordsAns: ["boarding", "10:15", "gate 8", "gate", "am", "ten", "8"] }
+]
+},
+q_aa: {
+id: "q_aa",
+title: "aa. PHỎNG VẤN XIN VIỆC (6 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Giới thiệu bản thân", qEn: "Could you briefly tell me about yourself and your background?", qVi: "Bạn có thể giới thiệu ngắn gọn về bản thân và kinh nghiệm của mình không?", aEn: "I have five years of experience in sales and customer service.", aVi: "Tôi có 5 năm kinh nghiệm trong lĩnh vực bán hàng và chăm sóc khách hàng.", keywordsAsk: ["tell me about yourself", "background"], keywordsAns: ["experience", "sales", "customer service", "graduated", "worked", "years"] },
+{ id: 2, subTopic: "Tình huống 2: Điểm mạnh của bản thân", qEn: "What do you consider your greatest professional strengths?", qVi: "Bạn đánh giá đâu là điểm mạnh lớn nhất trong công việc của mình?", aEn: "I am a fast learner, well-organized, and work well under pressure.", aVi: "Tôi học hỏi nhanh, làm việc có tổ chức và chịu được áp lực tốt.", keywordsAsk: ["strengths", "professional"], keywordsAns: ["fast learner", "organized", "pressure", "hardworking", "teamwork", "communication"] },
+{ id: 3, subTopic: "Tình huống 3: Lý do ứng tuyển", qEn: "Why do you want to work for our company?", qVi: "Tại sao bạn lại muốn làm việc cho công ty chúng tôi?", aEn: "I admire your company's reputation and see great growth opportunities here.", aVi: "Tôi ngưỡng mộ uy tín của công ty và thấy nhiều cơ hội phát triển tại đây.", keywordsAsk: ["why do you want", "our company"], keywordsAns: ["admire", "reputation", "growth", "opportunities", "contribute", "skills"] },
+{ id: 4, subTopic: "Tình huống 4: Kỹ năng làm việc nhóm", qEn: "How do you handle disagreements with your coworkers?", qVi: "Bạn xử lý thế nào khi có bất đồng quan điểm với đồng nghiệp?", aEn: "I listen calmly to their ideas and find the best solution together.", aVi: "Tôi bình tĩnh lắng nghe ý kiến của họ và cùng nhau tìm giải pháp tốt nhất.", keywordsAsk: ["disagreements", "coworkers"], keywordsAns: ["listen", "calmly", "ideas", "solution", "together", "respect", "discuss"] },
+{ id: 5, subTopic: "Tình huống 5: Mức lương mong muốn", qEn: "What are your salary expectations for this position?", qVi: "Mức lương mong muốn của bạn cho vị trí này là bao nhiêu?", aEn: "I am flexible and open to a fair offer based on my skills.", aVi: "Tôi khá linh hoạt và sẵn sàng đón nhận mức đề xuất xứng đáng với năng lực.", keywordsAsk: ["salary expectations", "position"], keywordsAns: ["flexible", "open", "fair", "offer", "skills", "experience", "negotiable"] },
+{ id: 6, subTopic: "Tình huống 6: Đặt câu hỏi cho nhà tuyển dụng", qEn: "Do you have any questions for us before we finish?", qVi: "Bạn có câu hỏi nào dành cho chúng tôi trước khi kết thúc buổi phỏng vấn không?", aEn: "Yes, could you tell me about the next steps in the hiring process?", aVi: "Vâng, anh/chị có thể cho tôi biết các bước tiếp theo trong quy trình tuyển dụng không ạ?", keywordsAsk: ["any questions", "before we finish"], keywordsAns: ["next steps", "hiring process", "team", "training", "start", "culture"] }
+]
+},
+q_bb: {
+id: "q_bb",
+title: "bb. GIAO TIẾP QUA ĐIỆN THOẠI (5 Tình huống)",
+items: [
+{ id: 1, subTopic: "Tình huống 1: Nghe máy & Xưng danh", qEn: "Hello, ABC Company speaking. How may I help you?", qVi: "Xin chào, Công ty ABC xin nghe. Tôi có thể giúp gì cho quý khách ạ?", aEn: "Hello, this is Quang calling. May I speak to Mr. Minh, please?", aVi: "Xin chào, tôi là Quảng đang gọi. Cho tôi gặp anh Minh được không ạ?", keywordsAsk: ["abc company", "help you"], keywordsAns: ["calling", "speak to", "mr. minh", "hello",
+"please", "connect"] },
+{ id: 2, subTopic: "Tình huống 2: Chờ nối máy", qEn: "Please hold the line for a moment. I will transfer your call.", qVi: "Vui lòng giữ máy một lát ạ. Tôi sẽ chuyển máy cho anh ngay.", aEn: "Thank you very much. I will wait.", aVi: "Cảm ơn bạn rất nhiều. Tôi sẽ chờ máy.", keywordsAsk: ["hold the line", "transfer"], keywordsAns: ["thank you", "thanks", "wait", "hold", "okay", "sure"] },
+{ id: 3, subTopic: "Tình huống 3: Người cần gặp đi vắng", qEn: "I am sorry, he is in a meeting right now. Can I take a message?", qVi: "Xin lỗi, anh ấy đang họp rồi ạ. Tôi có thể ghi lại lời nhắn không?", aEn: "Please tell him to call me back when he is free.", aVi: "Làm ơn nhắn anh ấy gọi lại cho tôi khi rảnh nhé.", keywordsAsk: ["in a meeting", "take a message"], keywordsAns: ["tell him", "call me back", "free", "message", "number", "later"] },
+{ id: 4, subTopic: "Tình huống 4: Đặt lịch hẹn công việc", qEn: "I am calling to schedule a meeting for next Tuesday morning.", qVi: "Tôi gọi để sắp xếp một cuộc hẹn vào sáng thứ Ba tuần tới.", aEn: "Let me check my calendar. Tuesday at 10 AM works well for me.", aVi: "Để tôi xem lịch nhé. Thứ Ba lúc 10 giờ sáng rất thuận tiện với tôi.", keywordsAsk: ["schedule a meeting", "tuesday"], keywordsAns: ["calendar", "tuesday", "10 am", "works well", "available", "confirm"] },
+{ id: 5, subTopic: "Tình huống 5: Gọi nhầm số", qEn: "Is this the number for the Grand Hotel reception?", qVi: "Đây có phải số điện thoại lễ tân khách sạn Grand không ạ?", aEn: "I think you have dialed the wrong number. This is a private residence.", aVi: "Tôi nghĩ bạn gọi nhầm số rồi. Đây là số nhà riêng ạ.", keywordsAsk: ["grand hotel", "reception"], keywordsAns: ["wrong number", "dialed", "private", "residence", "sorry", "mistake"] }
+]
+}
+
+
+        };
+
+        // =========================================================================
+        // 2. BIẾN TRẠNG THÁI TOÀN CỤC & WEB AUDIO API (CHUÔNG ĐÚNG / CÒI SAI)
+        // =========================================================================
+        let totalScore = 0;
+        let availableVoices = [];
+        let audioCtx = null;
+
+        // Trạng thái nhận diện giọng nói & phiên hội thoại
+        let recognition = null;
+        let activeMode = null; // null | 'mode1' | 'mode2'
+        let isRecognizing = false;
+
+        // Biến riêng cho Chế độ 2 (Máy hỏi - Phản xạ)
+        let currentReflexItem = null;
+        let reflexQueue = [];
+        let autoNextTimer = null;
+
+        // Biến riêng cho Chế độ 1 (Người hỏi - Máy đáp)
+        let currentMode1Prompt = null;
+
+        function ensureAudioContext() {
+            try {
+                if (!audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) audioCtx = new AudioContext();
+                }
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+            } catch (e) {
+                console.warn("AudioContext init warning:", e);
+            }
+        }
+
+        // Tiếng chuông "Ting!" ngân vang báo CORRECT
+        function playBellCorrect() {
+            ensureAudioContext();
+            if (!audioCtx) return;
+            try {
+                const now = audioCtx.currentTime;
+                const freqs = [1046.50, 1318.51, 1567.98]; // Hợp âm Đô trưởng sáng (C6 - E6 - G6)
+                freqs.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+
+                    gain.gain.setValueAtTime(0.001, now + idx * 0.06);
+                    gain.gain.linearRampToValueAtTime(0.28, now + idx * 0.06 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.06 + 0.75);
+
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now + idx * 0.06);
+                    osc.stop(now + idx * 0.06 + 0.8);
+                });
+            } catch (e) {}
+        }
+
+        // Tiếng còi trầm "È..." báo INCORRECT
+        function playBuzzerIncorrect() {
+            ensureAudioContext();
+            if (!audioCtx) return;
+            try {
+                const now = audioCtx.currentTime;
+                const osc1 = audioCtx.createOscillator();
+                const osc2 = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc2.type = 'sawtooth';
+
+                osc1.frequency.setValueAtTime(112, now);
+                osc1.frequency.linearRampToValueAtTime(88, now + 0.55);
+
+                osc2.frequency.setValueAtTime(116, now);
+                osc2.frequency.linearRampToValueAtTime(92, now + 0.55);
+
+                gain.gain.setValueAtTime(0.26, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc1.start(now);
+                osc2.start(now);
+                osc1.stop(now + 0.6);
+                osc2.stop(now + 0.6);
+            } catch (e) {}
+        }
+
+        function updateScore(points) {
+            totalScore += points;
+            const text = `${totalScore} điểm`;
+            const m = document.getElementById('mobile-score');
+            const d = document.getElementById('desktop-score');
+            if (m) m.textContent = text;
+            if (d) d.textContent = text;
+        }
+
+        function updateRateLabel(val) {
+            const badge = document.getElementById('rate-badge');
+            if (badge) badge.textContent = `${parseFloat(val).toFixed(2)}x`;
+        }
+
+        // =========================================================================
+        // 3. QUẢN LÝ GIỌNG ĐỌC MÁY (TEXT-TO-SPEECH AN TOÀN CHỐNG TREO)
+        // =========================================================================
+        function loadEnglishVoices() {
+            if (!('speechSynthesis' in window)) return;
+            try {
+                const all = window.speechSynthesis.getVoices() || [];
+                availableVoices = all.filter(v => v.lang && v.lang.toLowerCase().startsWith('en'));
+                const select = document.getElementById('voice-select');
+                if (!select) return;
+
+                if (availableVoices.length === 0) {
+                    select.innerHTML = `<option value="default">🇺🇸 Giọng Tiếng Anh Mặc Định (US/UK)</option>`;
+                    return;
+                }
+
+                select.innerHTML = availableVoices.map((v, idx) => {
+                    const flag = v.lang.includes('GB') ? '🇬🇧' : (v.lang.includes('AU') ? '🇦🇺' : '🇺🇸');
+                    return `<option value="${idx}">${flag} ${v.name} (${v.lang})</option>`;
+                }).join('');
+            } catch (e) {
+                console.warn("Voice load error:", e);
+            }
+        }
+
+        function speakText(text, onEndCallback = null) {
+            if (!('speechSynthesis' in window)) {
+                if (onEndCallback) setTimeout(onEndCallback, 500);
+                return;
+            }
+
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                const select = document.getElementById('voice-select');
+                const rateSlider = document.getElementById('rate-slider');
+
+                utterance.lang = 'en-US';
+                utterance.rate = rateSlider ? parseFloat(rateSlider.value) || 0.95 : 0.95;
+
+                if (select && availableVoices[select.value]) {
+                    utterance.voice = availableVoices[select.value];
+                    utterance.lang = availableVoices[select.value].lang;
+                }
+
+                let finished = false;
+                const done = () => {
+                    if (finished) return;
+                    finished = true;
+                    if (onEndCallback) onEndCallback();
+                };
+
+                utterance.onend = done;
+                utterance.onerror = done;
+
+                // Dự phòng an toàn nếu trình duyệt không kích hoạt onend
+                const estimatedMs = Math.max(2000, text.length * 85);
+                setTimeout(done, estimatedMs + 1500);
+
+                window.speechSynthesis.speak(utterance);
+            } catch (e) {
+                if (onEndCallback) onEndCallback();
+            }
+        }
+
+        // =========================================================================
+        // 4. NHẬN DIỆN GIỌNG NÓI NGƯỜI DÙNG (SPEECH RECOGNITION)
+        // =========================================================================
+        function initSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const badge = document.getElementById('browser-support-badge');
+
+            if (!SpeechRecognition) {
+                if (badge) {
+                    badge.className = "text-xs font-bold px-3 py-1.5 rounded-xl bg-rose-50 text-rose-700 border border-rose-200";
+                    badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Trình duyệt chưa hỗ trợ Micro (Hãy dùng Chrome/Edge)`;
+                }
+                return null;
+            }
+
+            const rec = new SpeechRecognition();
+            rec.lang = 'en-US';
+            rec.continuous = false;
+            rec.interimResults = false;
+            rec.maxAlternatives = 3;
+
+            rec.onstart = () => {
+                isRecognizing = true;
+                updateMicVisualState(true);
+            };
+
+            rec.onend = () => {
+                isRecognizing = false;
+                updateMicVisualState(false);
+
+                // Nếu đang ở Chế độ 1 (Người hỏi - Máy đáp) mà chưa có kết quả hoặc vừa xong, tự bật lại mic để rảnh tay
+                if (activeMode === 'mode1' && !window.speechSynthesis.speaking) {
+                    setTimeout(() => {
+                        if (activeMode === 'mode1' && !isRecognizing && !window.speechSynthesis.speaking) {
+                            try { rec.start(); } catch (e) {}
+                        }
+                    }, 400);
+                }
+            };
+
+            rec.onerror = (event) => {
+                isRecognizing = false;
+                updateMicVisualState(false);
+                if (event.error === 'not-allowed') {
+                    stopAllSessions();
+                    showInlineAlert("Bạn cần cho phép quyền truy cập Micro trên trình duyệt để luyện nói!");
+                } else if (activeMode === 'mode2' && event.error === 'no-speech') {
+                    // Không nghe thấy tiếng -> Báo INCORRECT & tự chuyển câu
+                    handleReflexEvaluation("");
+                }
+            };
+
+            rec.onresult = (event) => {
+                const results = event.results[0];
+                const transcripts = [];
+                for (let i = 0; i < results.length; i++) {
+                    transcripts.push(results[i].transcript.trim());
+                }
+                const bestHeard = transcripts[0] || "";
+
+                if (activeMode === 'mode2') {
+                    handleReflexEvaluation(bestHeard, transcripts);
+                } else if (activeMode === 'mode1') {
+                    handleUserAskedQuestion(bestHeard);
+                }
+            };
+
+            return rec;
+        }
+
+        function updateMicVisualState(listening) {
+            const pill2 = document.getElementById('reflex-status-pill');
+            const status1 = document.getElementById('mode1-mic-status');
+
+            if (activeMode === 'mode2' && pill2) {
+                if (listening) {
+                    pill2.className = "px-4 py-1.5 rounded-full text-xs font-extrabold mic-listening";
+                    pill2.innerHTML = `<i class="fa-solid fa-microphone-lines mr-1"></i> ĐANG NGHE BẠN TRẢ LỜI...`;
+                } else {
+                    pill2.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800";
+                    pill2.innerHTML = `<i class="fa-solid fa-robot mr-1"></i> Máy đang xử lý / đọc`;
+                }
+            }
+
+            if (activeMode === 'mode1' && status1) {
+                if (listening) {
+                    status1.innerHTML = `<span class="inline-flex items-center gap-1.5 text-rose-600 font-extrabold"><span class="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span> Micro đang mở — Hãy đặt câu hỏi tiếng Anh...</span>`;
+                } else {
+                    status1.innerHTML = `<i class="fa-solid fa-circle text-amber-400 mr-1.5"></i> Đang tạm nghỉ để Máy trả lời...`;
+                }
+            }
+        }
+
+        function stopAllSessions() {
+            activeMode = null;
+            if (autoNextTimer) clearTimeout(autoNextTimer);
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            if (recognition && isRecognizing) {
+                try { recognition.stop(); } catch (e) {}
+            }
+            isRecognizing = false;
+
+            // Reset nút Chế độ 2
+            document.getElementById('btn-start-reflex')?.classList.remove('hidden');
+            document.getElementById('btn-stop-reflex')?.classList.add('hidden');
+            const pill2 = document.getElementById('reflex-status-pill');
+            if (pill2) {
+                pill2.className = "px-3 py-1 rounded-full text-xs font-extrabold bg-slate-200 text-slate-700";
+                pill2.textContent = "Đã tạm dừng";
+            }
+
+            // Reset nút Chế độ 1
+            document.getElementById('btn-start-ask')?.classList.remove('hidden');
+            document.getElementById('btn-stop-ask')?.classList.add('hidden');
+            const status1 = document.getElementById('mode1-mic-status');
+            if (status1) {
+                status1.innerHTML = `<i class="fa-solid fa-circle text-slate-300 mr-1.5"></i> Micro đang tắt`;
+            }
+        }
+
+        // =========================================================================
+        // 5. LOGIC CHẾ ĐỘ 2: MÁY HỎI — NGƯỜI TRẢ LỜI PHẢN XẠ (KHÔNG CẦN BẤM NÚT)
+        // =========================================================================
+        function startReflexSession() {
+            ensureAudioContext();
+            stopAllSessions();
+            if (!recognition) recognition = initSpeechRecognition();
+            if (!recognition) return;
+
+            activeMode = 'mode2';
+            document.getElementById('btn-start-reflex').classList.add('hidden');
+            document.getElementById('btn-stop-reflex').classList.remove('hidden');
+
+            // Xáo trộn danh sách câu hỏi chủ đề hiện tại
+            const topicKey = document.getElementById('topic-selector')?.value || 'personal_life';
+            const items = CONVERSATION_TOPICS[topicKey].items;
+            reflexQueue = [...items].sort(() => Math.random() - 0.5);
+
+            askNextReflexQuestion();
+        }
+
+        function askNextReflexQuestion() {
+            if (activeMode !== 'mode2') return;
+            if (autoNextTimer) clearTimeout(autoNextTimer);
+
+            // Ẩn banner kết quả câu trước
+            const fb = document.getElementById('reflex-feedback-banner');
+            if (fb) fb.classList.add('hidden');
+
+            const topicKey = document.getElementById('topic-selector')?.value || 'personal_life';
+            const allItems = CONVERSATION_TOPICS[topicKey].items;
+            if (reflexQueue.length === 0) {
+                reflexQueue = [...allItems].sort(() => Math.random() - 0.5);
+            }
+
+            currentReflexItem = reflexQueue.pop();
+
+            // Cập nhật giao diện
+            document.getElementById('reflex-category-tag').textContent = `Mục: ${currentReflexItem.subTopic}`;
+            document.getElementById('reflex-question-en').textContent = currentReflexItem.qEn;
+            document.getElementById('reflex-question-vi').textContent = currentReflexItem.qVi;
+            document.getElementById('reflex-sample-en').textContent = `"${currentReflexItem.aEn}"`;
+            document.getElementById('reflex-sample-vi').textContent = `Nghĩa: ${currentReflexItem.aVi}`;
+
+            const aiBox = document.getElementById('ai-box-mode2');
+            if (aiBox) aiBox.classList.add('ai-speaking');
+
+            // Máy đọc câu hỏi -> Xong tự động mở Micro nghe Người trả lời!
+            speakText(currentReflexItem.qEn, () => {
+                if (aiBox) aiBox.classList.remove('ai-speaking');
+                if (activeMode === 'mode2' && recognition && !isRecognizing) {
+                    try {
+                        recognition.start();
+                    } catch (e) {}
+                }
+            });
+        }
+
+        function repeatCurrentReflexQuestion() {
+            if (!currentReflexItem) return;
+            if (recognition && isRecognizing) {
+                try { recognition.stop(); } catch (e) {}
+            }
+            speakText(currentReflexItem.qEn, () => {
+                if (activeMode === 'mode2' && recognition && !isRecognizing) {
+                    try { recognition.start(); } catch (e) {}
+                }
+            });
+        }
+
+        function skipToNextReflexQuestion() {
+            if (activeMode !== 'mode2') {
+                startReflexSession();
+                return;
+            }
+            if (recognition && isRecognizing) {
+                try { recognition.stop(); } catch (e) {}
+            }
+            askNextReflexQuestion();
+        }
+
+        function toggleReflexHintVisibility() {
+            const checked = document.getElementById('toggle-hint-checkbox')?.checked;
+            const box = document.getElementById('reflex-hint-box');
+            if (box) box.classList.toggle('hidden', !checked);
+        }
+
+               function handleReflexEvaluation(bestHeard, allTranscripts = []) {
+            if (activeMode !== 'mode2' || !currentReflexItem) return;
+
+            const combined = (allTranscripts.join(" ") || bestHeard).toLowerCase().replace(/[.,!?]/g, '').trim();
+            const questionClean = currentReflexItem.qEn.toLowerCase().replace(/[.,!?]/g, '').trim();
+
+            // 1. Chặn lỗi đọc lặp lại câu hỏi của máy
+            const isRepeatingQuestion = combined.includes(questionClean) || questionClean.includes(combined);
+
+            // 2. Danh sách các từ quá chung chung không được dùng để tính điểm
+            const genericWords = ["i am", "i'm", "yes", "no", "in", "i have", "my", "the", "a", "an", "is", "are"];
+
+            // 3. Lọc lấy các từ khóa đặc trưng nhất của câu hỏi hiện tại
+            const strictKeywords = currentReflexItem.keywordsAns.filter(kw => !genericWords.includes(kw.toLowerCase().trim()));
+
+            // 4. Kiểm tra câu trả lời có chứa từ khóa đặc trưng không
+            const matchedKeyword = strictKeywords.some(kw => {
+                const kwLower = kw.toLowerCase().trim();
+                if (kwLower.length <= 2) {
+                    return new RegExp(`\\b${kwLower}\\b`).test(combined);
+                }
+                return combined.includes(kwLower);
+            });
+
+            const isValidEnglishAnswer = combined.length > 0 && !isRepeatingQuestion && matchedKeyword;
+
+            const fb = document.getElementById('reflex-feedback-banner');
+            const title = document.getElementById('reflex-verdict-title');
+            const heardEl = document.getElementById('reflex-heard-transcript');
+            const detailEl = document.getElementById('reflex-feedback-detail');
+
+            fb.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-500', 'text-emerald-800', 'bg-rose-50', 'border-rose-500', 'text-rose-800', 'banner-pop');
+            void fb.offsetWidth;
+            fb.classList.add('banner-pop');
+
+            if (isValidEnglishAnswer) {
+                playBellCorrect();
+                updateScore(10);
+
+                fb.classList.add('bg-emerald-50', 'border-emerald-500', 'text-emerald-800');
+                title.className = "text-3xl sm:text-4xl font-black tracking-wide mb-2 text-emerald-600";
+                title.innerHTML = `<i class="fa-solid fa-circle-check mr-2"></i>CORRECT! (+10 điểm)`;
+                heardEl.textContent = `Bạn trả lời: "${bestHeard}"`;
+                detailEl.textContent = `Chính xác! Đang tự động chuyển sang câu hỏi tiếp theo...`;
+
+                autoNextTimer = setTimeout(() => {
+                    if (activeMode === 'mode2') askNextReflexQuestion();
+                }, 2400);
+            } else {
+                playBuzzerIncorrect();
+
+                fb.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-800');
+                title.className = "text-3xl sm:text-4xl font-black tracking-wide mb-2 text-rose-600";
+                title.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i>INCORRECT!`;
+                heardEl.textContent = bestHeard ? `Hệ thống nghe được: "${bestHeard}"` : `Chưa nghe thấy câu trả lời của bạn.`;
+                detailEl.innerHTML = `Chưa đúng trọng tâm câu hỏi! Gợi ý chuẩn: <b>"${currentReflexItem.aEn}"</b>`;
+
+                autoNextTimer = setTimeout(() => {
+                    if (activeMode === 'mode2') askNextReflexQuestion();
+                }, 3500);
+            }
+        }
+
+        // =========================================================================
+        // 6. LOGIC CHẾ ĐỘ 1: NGƯỜI HỎI — MÁY TRẢ LỜI
+        // =========================================================================
+        function pickRandomMode1Prompt() {
+            const topicKey = document.getElementById('topic-selector')?.value || 'personal_life';
+            const items = CONVERSATION_TOPICS[topicKey].items;
+            currentMode1Prompt = items[Math.floor(Math.random() * items.length)];
+
+            document.getElementById('mode1-prompt-en').textContent = `"${currentMode1Prompt.qEn}"`;
+            document.getElementById('mode1-prompt-vi').textContent = `(${currentMode1Prompt.qVi})`;
+        }
+
+        function speakMode1Prompt() {
+            if (!currentMode1Prompt) pickRandomMode1Prompt();
+            speakText(currentMode1Prompt.qEn);
+        }
+
+        function startUserAskSession() {
+            ensureAudioContext();
+            stopAllSessions();
+            if (!recognition) recognition = initSpeechRecognition();
+            if (!recognition) return;
+
+            activeMode = 'mode1';
+            document.getElementById('btn-start-ask').classList.add('hidden');
+            document.getElementById('btn-stop-ask').classList.remove('hidden');
+
+            try {
+                recognition.start();
+            } catch (e) {}
+        }
+
+        function handleUserAskedQuestion(spokenQuestion) {
+            if (!spokenQuestion) return;
+            appendChatMessage('user', spokenQuestion, '');
+
+            const lower = spokenQuestion.toLowerCase();
+            const topicKey = document.getElementById('topic-selector')?.value || 'personal_life';
+            const items = CONVERSATION_TOPICS[topicKey].items;
+
+            // Tìm câu trả lời khớp nhất theo từ khóa câu hỏi của người dùng
+            let bestMatch = null;
+            let bestScore = 0;
+
+            items.forEach(item => {
+                let score = 0;
+                item.keywordsAsk.forEach(kw => {
+                    if (lower.includes(kw.toLowerCase())) score += 2;
+                });
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = item;
+                }
+            });
+
+            // Nếu không khớp rõ từ khóa, dùng câu gợi ý hiện tại nếu người dùng đang đọc theo mẫu
+            if (!bestMatch && currentMode1Prompt) {
+                bestMatch = currentMode1Prompt;
+            } else if (!bestMatch) {
+                bestMatch = items[0];
+            }
+
+            playBellCorrect();
+            updateScore(5);
+            appendChatMessage('ai', bestMatch.aEn, bestMatch.aVi);
+
+            // Máy đọc câu trả lời, xong tự mở lại micro cho lượt hỏi tiếp theo
+            speakText(bestMatch.aEn, () => {
+                pickRandomMode1Prompt();
+                if (activeMode === 'mode1' && recognition && !isRecognizing) {
+                    try { recognition.start(); } catch (e) {}
+                }
+            });
+        }
+
+        function appendChatMessage(sender, enText, viText) {
+            const box = document.getElementById('mode1-chat-history');
+            if (!box) return;
+
+            const wrapper = document.createElement('div');
+            if (sender === 'user') {
+                wrapper.className = "flex items-start justify-end gap-2.5";
+                wrapper.innerHTML = `
+                    <div class="bg-blue-600 text-white rounded-2xl rounded-tr-none px-4 py-2.5 shadow-sm max-w-[85%]">
+                        <p class="text-sm font-bold">${enText}</p>
+                        <span class="text-[10px] text-blue-100 block mt-0.5 text-right">Bạn vừa hỏi</span>
+                    </div>
+                    <div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs shrink-0 mt-1">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                `;
+            } else {
+                wrapper.className = "flex items-start gap-2.5";
+                wrapper.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs shrink-0 mt-1">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-2xl rounded-tl-none px-4 py-2.5 shadow-sm max-w-[85%]">
+                        <p class="text-sm font-bold text-slate-800">${enText}</p>
+                        ${viText ? `<p class="text-xs text-slate-500 mt-0.5">${viText}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            box.appendChild(wrapper);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function clearMode1Chat() {
+            const box = document.getElementById('mode1-chat-history');
+            if (box) box.innerHTML = '';
+        }
+
+        // =========================================================================
+        // 7. KHO CÂU MẪU SOẠN SẴN & CHUYỂN TAB GIAO DIỆN
+        // =========================================================================
+        function renderBankList() {
+            const topicKey = document.getElementById('topic-selector')?.value || 'personal_life';
+            const items = CONVERSATION_TOPICS[topicKey].items;
+            const listEl = document.getElementById('bank-list');
+            const countBadge = document.getElementById('bank-count-badge');
+
+            if (countBadge) countBadge.textContent = `${items.length} mẫu hội thoại`;
+            if (!listEl) return;
+
+            listEl.innerHTML = items.map(item => `
+                <div class="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <span class="inline-block text-[11px] font-extrabold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md mb-2">
+                            ${item.subTopic}
+                        </span>
+                        <div class="mb-3">
+                            <p class="text-xs font-bold text-slate-400 uppercase">Hỏi (Question):</p>
+                            <p class="text-sm font-extrabold text-slate-800">${item.qEn}</p>
+                            <p class="text-xs text-slate-500">${item.qVi}</p>
+                        </div>
+                        <div class="bg-blue-50/70 border border-blue-100 rounded-xl p-3">
+                            <p class="text-xs font-bold text-blue-600 uppercase">Đáp (Answer):</p>
+                            <p class="text-sm font-bold text-slate-800">${item.aEn}</p>
+                            <p class="text-xs text-slate-500 mt-0.5">${item.aVi}</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mt-3 pt-2 border-t border-slate-100">
+                        <button onclick="speakText('${item.qEn.replace(/'/g, "\\'")}')" class="py-2 px-3 bg-slate-100 hover:bg-blue-600 text-slate-700 hover:text-white rounded-xl text-xs font-bold transition">
+                            <i class="fa-solid fa-volume-high mr-1"></i> Nghe Hỏi
+                        </button>
+                        <button onclick="speakText('${item.aEn.replace(/'/g, "\\'")}')" class="py-2 px-3 bg-blue-50 hover:bg-indigo-600 text-blue-700 hover:text-white rounded-xl text-xs font-bold transition">
+                            <i class="fa-solid fa-volume-high mr-1"></i> Nghe Đáp
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function switchMainView(viewName) {
+            stopAllSessions();
+            ['mode2', 'mode1', 'bank'].forEach(v => {
+                const btn = document.getElementById(`nav-${v}`);
+                const sec = document.getElementById(`view-${v}`);
+                if (btn) {
+                    btn.className = (v === viewName)
+                        ? "flex-1 lg:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all bg-white text-blue-600 shadow-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
+                        : "flex-1 lg:flex-none px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all text-slate-600 hover:text-slate-900 flex items-center justify-center gap-1.5 whitespace-nowrap";
+                }
+                if (sec) sec.classList.toggle('hidden', v !== viewName);
+            });
+
+            if (viewName === 'mode1') pickRandomMode1Prompt();
+            if (viewName === 'bank') renderBankList();
+        }
+
+        function onTopicChange() {
+            stopAllSessions();
+            pickRandomMode1Prompt();
+            renderBankList();
+        }
+
+        function showInlineAlert(msg) {
+            const fb = document.getElementById('reflex-feedback-banner');
+            if (!fb) return;
+            fb.classList.remove('hidden', 'bg-emerald-50', 'border-emerald-500');
+            fb.classList.add('bg-rose-50', 'border-rose-500', 'text-rose-800');
+            document.getElementById('reflex-verdict-title').textContent = "THÔNG BÁO MICRO";
+            document.getElementById('reflex-heard-transcript').textContent = msg;
+            document.getElementById('reflex-feedback-detail').textContent = "";
+        }
+
+        // Khởi tạo an toàn sau khi tải xong DOM (chống treo 100%)
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                loadEnglishVoices();
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.onvoiceschanged = loadEnglishVoices;
+                }
+                pickRandomMode1Prompt();
+                renderBankList();
+            } catch (err) {
+                console.error("Init error:", err);
+            }
+        });
+    </script>
+</body>
+</html>
